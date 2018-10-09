@@ -3,9 +3,9 @@
 %}
 
 letter		[a-zA-Z]
-number		[0-9]
-digit		{number}+
-identifier	{letter}({letter}|{digit}|[_](letter|digit)*
+digit		[0-9]
+number		{digit}+
+identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 
 %%
 "function"		{printf("FUNCTION %s\n", yytext);}
@@ -52,9 +52,10 @@ identifier	{letter}({letter}|{digit}|[_](letter|digit)*
 ">="			{printf("GTE \n");}
 
 
-digit			{printf("NUMBER %s\n", yytext);}
-identifier		{printf("IDENT %s\n", yytext);}
-
+{number}			{printf("NUMBER %s\n", yytext);}
+{identifier}		{printf("IDENT %s\n", yytext);}
+[\t]*			;
+[\n]			;
 
 ";"				{printf("SEMICOLON \n");}
 ":"				{printf("COLON \n");}
@@ -65,7 +66,7 @@ identifier		{printf("IDENT %s\n", yytext);}
 "]"				{printf("R_SQUARE_BRACKET \n");}
 ":="			{printf("ASSIGN \n");}
 
-.				{return 0;}
+.			;
 %%
 
 
