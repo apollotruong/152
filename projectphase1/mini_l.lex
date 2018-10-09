@@ -25,6 +25,7 @@ identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 "then"			{printf("THEN \n");}
 "endif"			{printf("ENDIF \n");}
 "else"			{printf("ELSE \n");}
+"elseif"		{printf("ELSIF \n");}
 "while"			{printf("WHILE \n");}
 "do"			{printf("DO \n");}
 "beginloop"		{printf("BEGINLOOP \n");}
@@ -38,8 +39,9 @@ identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 "true"			{printf("TRUE \n");}
 "false"			{printf("FALSE \n");}
 "return"		{printf("RETURN \n");}
-
-
+"program"		{printf("PROGRAM \n");}
+"endprogram"		{printf("END_PROGRAM \n");}
+"beginprogram"		{printf("BEGIN_PROGRAM \n");}
 "-"				{printf("SUB \n");}
 "+"				{printf("ADD \n");}
 "*"				{printf("MULT \n");}
@@ -59,6 +61,7 @@ identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 {identifier}		{printf("IDENT %s\n", yytext);}
 [\t]*			;
 [\n]			;
+"##"[^\n]*		;
 
 ";"				{printf("SEMICOLON \n");}
 ":"				{printf("COLON \n");}
