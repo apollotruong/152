@@ -8,7 +8,7 @@ digit		{number}+
 identifier	{letter}({letter}|{digit}|[_](letter|digit)*
 
 %%
-"function"		{printf("FUNCTION \n");}
+"function"		{printf("FUNCTION %s\n", yytext);}
 "beginparams"	{printf("BEGIN_PARAMS \n");}
 "endparams"		{printf("END_PARAMS \n");}
 "beginlocals"	{printf("BEGIN_LOCALS \n");}
@@ -64,6 +64,8 @@ identifier		{printf("IDENT %s\n", yytext);}
 "["				{printf("L_SQUARE_BRACKET \n");}
 "]"				{printf("R_SQUARE_BRACKET \n");}
 ":="			{printf("ASSIGN \n");}
+
+.				{return 0;}
 %%
 
 
