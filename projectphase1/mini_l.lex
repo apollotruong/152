@@ -1,3 +1,6 @@
+/* CS152 Fall 2018 */
+/* Apollo Truong and Sydney Son */
+
 %{
 
 %}
@@ -8,7 +11,7 @@ number		{digit}+
 identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 
 %%
-"function"		{printf("FUNCTION %s\n", yytext);}
+"function"		{printf("FUNCTION \n");}
 "beginparams"	{printf("BEGIN_PARAMS \n");}
 "endparams"		{printf("END_PARAMS \n");}
 "beginlocals"	{printf("BEGIN_LOCALS \n");}
