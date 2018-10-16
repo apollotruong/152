@@ -12,68 +12,68 @@ identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 ERROR1		[0-9_]+[a-zA-Z0-9]+
 
 %%
-"function"		{printf("FUNCTION \n");}
-"beginparams"	{printf("BEGIN_PARAMS \n");}
-"endparams"		{printf("END_PARAMS \n");}
-"beginlocals"	{printf("BEGIN_LOCALS \n");}
-"endlocals"		{printf("END_LOCALS \n");}
-"beginbody"		{printf("BEGIN_BODY \n");}
-"endbody"		{printf("END_BODY \n");}
-"integer"		{printf("INTEGER \n");}
-"array"			{printf("ARRAY \n");}
-"of"			{printf("OF \n");}
-"if"			{printf("IF \n");}
-"then"			{printf("THEN \n");}
-"endif"			{printf("ENDIF \n");}
-"else"			{printf("ELSE \n");}
-"elseif"		{printf("ELSIF \n");}
-"while"			{printf("WHILE \n");}
-"do"			{printf("DO \n");}
-"beginloop"		{printf("BEGINLOOP \n");}
-"endloop"		{printf("ENDLOOP \n");}
-"continue"		{printf("CONTINUE \n");}
-"read"			{printf("READ \n");}
-"write"			{printf("WRITE \n");}
-"and"			{printf("AND \n");}
-"or"			{printf("OR \n");}
-"not"			{printf("NOT \n");}
-"true"			{printf("TRUE \n");}
-"false"			{printf("FALSE \n");}
-"return"		{printf("RETURN \n");}
+"function"		{printf("FUNCTION \n" , currLine++);}
+"beginparams"	{printf("BEGIN_PARAMS \n" , currLine++);}
+"endparams"		{printf("END_PARAMS \n" , currLine++);}
+"beginlocals"	{printf("BEGIN_LOCALS \n" , currLine++);}
+"endlocals"		{printf("END_LOCALS \n" , currLine++);}
+"beginbody"		{printf("BEGIN_BODY \n" , currLine++);}
+"endbody"		{printf("END_BODY \n" , currLine++);}
+"integer"		{printf("INTEGER \n" , currLine++);}
+"array"			{printf("ARRAY \n" , currLine++);}
+"of"			{printf("OF \n" , currLine++);}
+"if"			{printf("IF \n" , currLine++);}
+"then"			{printf("THEN \n" , currLine++);}
+"endif"			{printf("ENDIF \n" , currLine++);}
+"else"			{printf("ELSE \n" , currLine++);}
+"elseif"		{printf("ELSIF \n" , currLine++);}
+"while"			{printf("WHILE \n" , currLine++);}
+"do"			{printf("DO \n" , currLine++);}
+"beginloop"		{printf("BEGINLOOP \n" , currLine++);}
+"endloop"		{printf("ENDLOOP \n" , currLine++);}
+"continue"		{printf("CONTINUE \n" , currLine++);}
+"read"			{printf("READ \n" , currLine++);}
+"write"			{printf("WRITE \n" , currLine++);}
+"and"			{printf("AND \n" , currLine++);}
+"or"			{printf("OR \n" , currLine++);}
+"not"			{printf("NOT \n" , currLine++);}
+"true"			{printf("TRUE \n" , currLine++);}
+"false"			{printf("FALSE \n" , currLine++);}
+"return"		{printf("RETURN \n" , currLine++);}
 "program"		;
-"endprogram"		{printf("END_PARAMS \n");}
-"beginprogram"		{printf("BEGIN_PARAMS \n");}
-"-"				{printf("SUB \n");}
-"+"				{printf("ADD \n");}
-"*"				{printf("MULT \n");}
-"/"				{printf("DIV \n");}
-"%"				{printf("MOD \n");}
+"endprogram"		{printf("END_PARAMS \n" , currLine++);}
+"beginprogram"		{printf("BEGIN_PARAMS \n" , currLine++);}
+"-"				{printf("SUB \n" , currLine++);}
+"+"				{printf("ADD \n" , currLine++);}
+"*"				{printf("MULT \n" , currLine++);}
+"/"				{printf("DIV \n" , currLine++);}
+"%"				{printf("MOD \n" , currLine++);}
 
 
-"=="			{printf("EQ \n");}
-"<>"			{printf("NEQ \n");}
-"<"				{printf("LT \n");}
-">"				{printf("GT \n");}
-"<="			{printf("LTE \n");}
-">="			{printf("GTE \n");}
+"=="			{printf("EQ \n" , currLine++);}
+"<>"			{printf("NEQ \n" , currLine++);}
+"<"				{printf("LT \n" , currLine++);}
+">"				{printf("GT \n" , currLine++);}
+"<="			{printf("LTE \n" , currLine++);}
+">="			{printf("GTE \n" , currLine++);}
 
 
-{number}			{printf("NUMBER %s\n", yytext);}
-{identifier}		{printf("IDENT %s\n", yytext);}
+{number}			{printf("NUMBER %s\n", yytext , currLine++);}
+{identifier}		{printf("IDENT %s\n", yytext , currLine++);}
 [\t]*			;
 [\n]			;
 "##"[^\n]*		;
 
-";"				{printf("SEMICOLON \n");}
-":"				{printf("COLON \n");}
-","				{printf("COMMA \n");}
-"("				{printf("L_PAREN \n");}
-")"				{printf("R_PAREN \n");}
-"["				{printf("L_SQUARE_BRACKET \n");}
-"]"				{printf("R_SQUARE_BRACKET \n");}
-":="			{printf("ASSIGN \n");}
+";"				{printf("SEMICOLON \n" , currLine++);}
+":"				{printf("COLON \n" , currLine++);}
+","				{printf("COMMA \n" , currLine++);}
+"("				{printf("L_PAREN \n" , currLine++);}
+")"				{printf("R_PAREN \n" , currLine++);}
+"["				{printf("L_SQUARE_BRACKET \n" , currLine++);}
+"]"				{printf("R_SQUARE_BRACKET \n" , currLine++);}
+":="			{printf("ASSIGN \n" , currLine++);}
 
-{ERROR}			{printf("Error at line %d: input must start with a letter\n",currLine;
+{ERROR}			{printf("Error at line %d: input must start with a letter\n",currLine , currLine++);}
 
 .			{printf("ERROR \n";}
 %%
