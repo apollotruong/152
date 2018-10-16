@@ -39,9 +39,9 @@ identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 "true"			{printf("TRUE \n");}
 "false"			{printf("FALSE \n");}
 "return"		{printf("RETURN \n");}
-"program"		{printf("PROGRAM \n");}
-"endprogram"		{printf("END_PROGRAM \n");}
-"beginprogram"		{printf("BEGIN_PROGRAM \n");}
+"program"		;
+"endprogram"		{printf("END_PARAMS \n");}
+"beginprogram"		{printf("BEGIN_PARAMS \n");}
 "-"				{printf("SUB \n");}
 "+"				{printf("ADD \n");}
 "*"				{printf("MULT \n");}

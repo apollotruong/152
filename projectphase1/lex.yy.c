@@ -996,17 +996,17 @@ YY_RULE_SETUP
 case 29:
 YY_RULE_SETUP
 #line 42 "mini_l.lex"
-{printf("PROGRAM \n");}
+;
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
 #line 43 "mini_l.lex"
-{printf("END_PROGRAM \n");}
+{printf("END_PARAMS \n");}
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
 #line 44 "mini_l.lex"
-{printf("BEGIN_PROGRAM \n");}
+{printf("BEGIN_PARAMS \n");}
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
