@@ -2,13 +2,14 @@
 /* Apollo Truong and Sydney Son */
 
 %{
-
+int currLine = 1;
 %}
 
 letter		[a-zA-Z]
 digit		[0-9]
 number		{digit}+
 identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
+ERROR1		[0-9_]+[a-zA-Z0-9]+
 
 %%
 "function"		{printf("FUNCTION \n");}
@@ -72,7 +73,9 @@ identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 "]"				{printf("R_SQUARE_BRACKET \n");}
 ":="			{printf("ASSIGN \n");}
 
-.			;
+{ERROR}			{printf("Error at line %d: input must start with a letter\n",currLine;
+
+.			{printf("ERROR \n";}
 %%
 
 
