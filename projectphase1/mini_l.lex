@@ -11,13 +11,12 @@ letter		[a-zA-Z]
 digit		[0-9]
 number		{digit}+
 identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
-ERROR1		[0-9_]+[a-zA-Z0-9_]+
 
 %%
 "function"		{printf("FUNCTION \n");}
 "beginparams"	{printf("BEGIN_PARAMS \n");}
-"endparams"		{printf("END_PARAMS \n";}
-"beginlocals"	{printf("BEGIN_LOCALS \n);}
+"endparams"		{printf("END_PARAMS \n");}
+"beginlocals"	{printf("BEGIN_LOCALS \n");}
 "endlocals"		{printf("END_LOCALS \n");}
 "beginbody"		{printf("BEGIN_BODY \n");}
 "endbody"		{printf("END_BODY \n");}
