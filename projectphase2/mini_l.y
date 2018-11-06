@@ -12,6 +12,7 @@ void yyerror(const char *msg);
 extern int currLine;
 extern int currPosition;
 FILE * yyin;
+extern int yylex();
 %}
 /* Bison Declarations */
 %union {
@@ -137,6 +138,7 @@ var:            IDENT {printf("IDENT %s\n", $1);}
 %%
 /* Additional C Code */
 int main(int argc, char **argv) {
+   //yylex();
    if (argc > 1) {
       yyin = fopen(argv[1], "r");
       if (yyin == NULL){
@@ -148,5 +150,5 @@ int main(int argc, char **argv) {
 }
 
 void yyerror(const char *msg) {
-   printf("** Line %d, position %d: %s\n", currLine, currPos, msg);
+   printf("** Line %d, position %d: %s\n", currLine, currPosition, msg);
 }
