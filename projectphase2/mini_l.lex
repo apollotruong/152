@@ -13,66 +13,66 @@ number		{digit}+
 identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 
 %%
-"function"		{printf("FUNCTION \n");}
-"beginparams"	{printf("BEGIN_PARAMS \n");}
-"endparams"		{printf("END_PARAMS \n");}
-"beginlocals"	{printf("BEGIN_LOCALS \n");}
-"endlocals"		{printf("END_LOCALS \n");}
-"beginbody"		{printf("BEGIN_BODY \n");}
-"endbody"		{printf("END_BODY \n");}
-"integer"		{printf("INTEGER \n");}
-"array"			{printf("ARRAY \n");}
-"of"			{printf("OF \n");}
-"if"			{printf("IF \n");}
-"then"			{printf("THEN \n");}
-"endif"			{printf("ENDIF \n");}
-"else"			{printf("ELSE \n");}
-"elseif"		{printf("ELSIF \n");}
-"while"			{printf("WHILE \n");}
-"do"			{printf("DO \n");}
-"beginloop"		{printf("BEGINLOOP \n");}
-"endloop"		{printf("ENDLOOP \n");}
-"continue"		{printf("CONTINUE \n");}
-"read"			{printf("READ \n");}
-"write"			{printf("WRITE \n");}
-"and"			{printf("AND \n");}
-"or"			{printf("OR \n");}
-"not"			{printf("NOT \n");}
-"true"			{printf("TRUE \n");}
-"false"			{printf("FALSE \n");}
-"return"		{printf("RETURN \n");}
+"function"		{return FUNCTION;}
+"beginparams"	{return BEGIN_PARAMS;}
+"endparams"		{return END_PARAMS;}
+"beginlocals"	{return BEGIN_LOCALS;}
+"endlocals"		{return END_LOCALS;}
+"beginbody"		{return BEGIN_BODY;}
+"endbody"		{return END_BODY;}
+"integer"		{return INTEGER;}
+"array"			{return ARRAY;}
+"of"			{return OF;}
+"if"			{return IF;}
+"then"			{return THEN;}
+"endif"			{return ENDIF;}
+"else"			{return ELSE;}
+"elseif"		{return ELSEIF;}
+"while"			{return WHILE;}
+"do"			{return DO;}
+"beginloop"		{return BEGINLOOP;}
+"endloop"		{return ENDLOOP;}
+"continue"		{return CONTINUE;}
+"read"			{return READ;}
+"write"			{return WRITE;}
+"and"			{return AND;}
+"or"			{return OR;}
+"not"			{return NOT;}
+"true"			{return TRUE;}
+"false"			{return FALSE;}
+"return"		{return RETURN;}
 "program"		;
-"endprogram"		{printf("END_PARAMS \n");}
-"beginprogram"		{printf("BEGIN_PARAMS \n");}
-"-"				{printf("SUB \n");}
-"+"				{printf("ADD \n");}
-"*"				{printf("MULT \n");}
-"/"				{printf("DIV \n");}
-"%"				{printf("MOD \n");}
+"endprogram"		{return END_PARAMS;}
+"beginprogram"		{return BEGIN_PARAMS;}
+"-"				{return SUB;}
+"+"				{return ADD;}
+"*"				{return MULT;}
+"/"				{return DIV;}
+"%"				{return MOD;}
 
 
-"=="			{printf("EQ \n");}
-"<>"			{printf("NEQ \n");}
-"<"				{printf("LT \n");}
-">"				{printf("GT \n");}
-"<="			{printf("LTE \n");}
-">="			{printf("GTE \n");}
+"=="			{return EQ;}
+"<>"			{return NEQ;}
+"<"				{return LT;}
+">"				{return GT;}
+"<="			{return LTE;}
+">="			{return GTE;}
 
 
-{number}			{printf("NUMBER %s\n", yytext  );}
-{identifier}		{printf("IDENT %s\n", yytext  );}
+{number}			{return NUMBER;}
+{identifier}		{return IDENT;}
 [\t]*			;
 [\n]			;
 "##"[^\n]*		;
 
-";"				{printf("SEMICOLON \n");}
-":"				{printf("COLON \n");}
-","				{printf("COMMA \n");}
-"("				{printf("L_PAREN \n");}
-")"				{printf("R_PAREN \n");}
-"["				{printf("L_SQUARE_BRACKET \n");}
-"]"				{printf("R_SQUARE_BRACKET \n");}
-":="			{printf("ASSIGN \n");}
+";"				{return SEMICOLON;}
+":"				{return COLON;}
+","				{return COMMA;}
+"("				{return L_PAREN;}
+")"				{return R_PAREN;}
+"["				{return L_SQUARE_BRACKET;}
+"]"				{return R_SQUARE_BRACKET;}
+":="			{return ASSIGN;}
 
 
 .			;
