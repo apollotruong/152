@@ -1,5 +1,5 @@
 /* CS152 Fall 2018 */
-/* Apollo Truong and Sydney Son */
+/* Apollo Truong and Sidney Son */
 
 %{
 #include "y.tab.h"
@@ -10,7 +10,7 @@ int currPosition;
 letter		[a-zA-Z]
 digit		[0-9]
 number		{digit}+
-identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
+identifier	{letter}([a-zA-Z0-9_]*[a-zA-Z0-9])*
 
 %%
 "function"		{return FUNCTION;}
@@ -59,8 +59,8 @@ identifier	{letter}({letter}|{digit}|[_]({letter}|{digit}))*
 ">="			{return GTE;}
 
 
-{number}			{return NUMBER;}
-{identifier}		{return IDENT;}
+{number}			{ yylval.val = atoi(yytext); return NUMBER;}
+{identifier}		{ yylval.ident = yytext; return IDENT;}
 [\t]*			;
 [\n]			;
 "##"[^\n]*		;

@@ -28,7 +28,7 @@ beginbody	## main program
     endloop
   while k < n;
 
-  if i<j and j < n and i>=0 then
+  if i < j and j < n and i >= 0 then
      t[i] := i * 2;
      t[j] := j * 2;
      k := t[i];
@@ -52,7 +52,7 @@ beginbody	## main program
     write t[i];
   endif;
 
-  if j < n and j >=0 then
+  if j < n and j >= 0 then
     write t[j];
   endif;
 

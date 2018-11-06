@@ -22,7 +22,7 @@ extern int yylex();
 // Start Symbol
 %start prog_start
 // Reserved Words
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
 // Arithmetic Operators
 %left SUB ADD MULT DIV MOD
 // Comparison Operators
@@ -41,10 +41,10 @@ prog_start:     functions {printf("prog_start -> functions\n");}
 functions:      {printf("functions -> epsilon\n");}
                 |   function functions {printf("functions -> function functions\n");}
                 ;
-function:       FUNCTION IDENT SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY {printf("function -> FUNCTION IDENT SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY\n");}
+function:       FUNCTION ident SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY {printf("function -> FUNCTION ident SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY\n");}
                 ;
 
-declarations:   {printf("declarations -> epsilon");}
+declarations:   {printf("declarations -> epsilon\n");}
                 |   declaration SEMICOLON declarations {printf("declarations -> declaration SEMICOLON declarations\n");} 
                 ;
 
@@ -56,10 +56,10 @@ identifiers:    ident {printf("identifiers -> ident \n");}
                 |   ident COMMA identifiers {printf("identifiers -> ident COMMA identifiers\n");}
                 ;
 
-ident:          IDENT {printf("ident -> IDENT %s\n", $1);}
+ident:          IDENT {printf("ident -> IDENT %s \n", $1);}
                 ;
 
-statements:     {printf("statements -> epsilon");}
+statements:     {printf("statements -> epsilon\n");}
                 |   statement SEMICOLON statements {printf("statements -> statement SEMICOLON statemetns\n");}
                 ;
 
