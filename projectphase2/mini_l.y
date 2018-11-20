@@ -74,13 +74,19 @@ statement:      var ASSIGN expr {printf("statement -> var ASSIGN expr\n");}
                 |   RETURN expr {printf("statement -> RETURN expr\n");}
                 ;
 
-bool-expr:      rel-and-expr {printf("bool-expr -> rel-and-expr\n");}
-                |   rel-and-expr OR rel-and-expr {printf("bool-expr -> rel-and-expr OR rel-and-expr\n");}
+bool-expr:      rel-and-exprs {printf("bool-expr -> rel-and-exprs\n");}
                 ;
 
-rel-and-expr:   rel-expr {printf("rel-and-expr -> rel-expr\n");}
-                |   rel-expr AND rel-expr {printf("rel-and-expr -> rel-expr AND rel-expr\n");}
+rel-and-exprs:	rel-and-expr {printf("rel-and-exprs -> rel-and-expr\n");}
+		|	rel-and-expr OR rel-and-exprs {printf("rel-and-exprs -> rel-and-expr OR rel-and-exprs\n");}
+		;
+
+rel-and-expr:   rel-exprs {printf("rel-and-expr -> rel-exprs\n");}
                 ;
+
+rel-exprs:	rel-expr {printf("rel-exprs -> rel-expr\n");}
+		|   rel-expr AND rel-exprs {printf("rel-and-exprs -> rel-expr AND rel-exprs\n");}
+		;
 
 rel-expr:       NOT expr comp expr {printf("rel-expr -> NOT expr comp expr\n");}
                 |   NOT TRUE {printf("rel-expr -> NOT TRUE\n");}
@@ -104,15 +110,21 @@ exprs:          expr {printf("exprs -> expr\n");}
                 |   expr COMMA exprs {printf("exprs -> expr COMMA exprs\n");}
                 ;
 
-expr:           mult-expr {printf("expr -> mult-expr\n");}
-                |   mult-expr SUB mult-expr {printf("expr -> mult-expr SUB mult-expr\n");}
-                |   mult-expr ADD mult-expr {printf("expr -> mult-expr ADD mult-expr\n");}
-                ;
+expr:           mult-expr expr-loop {printf("expr -> mult-expr expr-loop\n");}
+		; 	
                 
-mult-expr:      term {printf("mult-expr -> term\n");}
-                |   term MULT term {printf("mult-expr -> term MULT term\n");}
-                |   term DIV term {printf("mult-expr -> term DIV term\n");}
-                |   term MOD term {printf("mult-expr -> term MOD term\n");}
+expr-loop:	{printf("expr-loop -> epsilon \n");}
+		|   ADD mult-expr expr-loop {printf("expr-loop -> ADD mult-expr expr-loop \n");}
+		|   SUB mult-expr expr-loop {printf("expr-loop -> SUB mult-expr expr-loop \n");}
+		;
+
+mult-expr:      term mult-expr-loop {printf("mult-expr -> term mult-expr-loop \n");}
+		;
+
+mult-expr-loop:	{printf("mult-expr-loop -> epsilon\n");}
+		|   MULT term mult-expr-loop {printf("mult-expr -> MULT term mult-expr-loop \n");}
+                |   DIV term mult-expr-loop {printf("mult-expr -> DIV term mult-expr-loop\n");}
+                |   MOD term mult-expr-loop {printf("mult-expr -> MOD term mult-expr-loop \n");}
                 ;
 
 term:           SUB var {printf("term -> SUB var\n");}
