@@ -60,7 +60,7 @@ ident:          IDENT {printf("ident -> IDENT %s \n", $1);}
                 ;
 
 statements:     {printf("statements -> epsilon\n");}
-                |   statement SEMICOLON statements {printf("statements -> statement SEMICOLON statemetns\n");}
+                |   statement SEMICOLON statements {printf("statements -> statement SEMICOLON statements\n");}
                 ;
 
 statement:      var ASSIGN expr {printf("statement -> var ASSIGN expr\n");}
@@ -118,11 +118,11 @@ mult-expr:      term {printf("mult-expr -> term\n");}
 term:           SUB var {printf("term -> SUB var\n");}
                 |   SUB number {printf("term -> SUB number\n");}
                 |   SUB L_PAREN expr R_PAREN {printf("term -> SUB L_PAREN expr R_PAREN\n");}
-                |   SUB IDENT L_PAREN exprs R_PAREN {printf("term -> SUB IDENT L_PAREN exprs R_PAREN\n");}
+                |   SUB ident L_PAREN exprs R_PAREN {printf("term -> SUB ident L_PAREN exprs R_PAREN\n");}
                 |   var {printf("term -> var\n");}
                 |   number {printf("term -> number\n");}
                 |   L_PAREN expr R_PAREN {printf("term -> L_PAREN expr R_PAREN\n");}
-                |   IDENT L_PAREN exprs R_PAREN {printf("term -> IDENT L_PAREN exprs R_PAREN\n");}
+                |   ident L_PAREN exprs R_PAREN {printf("term -> ident L_PAREN exprs R_PAREN\n");}
                 ;
 
 number:         NUMBER {printf("number -> NUMBER %d\n", $1);}
@@ -132,8 +132,8 @@ vars:           var {printf("vars -> var\n");}
                 |   var COMMA vars {printf("vars -> var COMMA vars\n");}
                 ;
 
-var:            IDENT {printf("IDENT %s\n", $1);}
-                | IDENT L_SQUARE_BRACKET expr R_SQUARE_BRACKET {printf("IDENT %s L_SQUARE_BRACKET expr R_SQUARE_BRACKET\n", $1);}
+var:            ident{printf("var -> ident\n");}
+                | ident L_SQUARE_BRACKET expr R_SQUARE_BRACKET {printf("var -> ident L_SQUARE_BRACKET expr R_SQUARE_BRACKET\n");}
 
 %%
 /* Additional C Code */
