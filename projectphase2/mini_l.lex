@@ -10,7 +10,7 @@ int currPosition;
 letter		[a-zA-Z]
 digit		[0-9]
 number		{digit}+
-identifier	{letter}([a-zA-Z0-9_]*[a-zA-Z0-9])*
+identifier	[a-zA-Z]([a-zA-Z0-9_]*[a-zA-Z0-9])*
 
 %%
 "function"		{return FUNCTION;}
