@@ -8,8 +8,9 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>	
-#include <osstream>
+#include <ostream>
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 
 void yyerror(const char *msg);
@@ -41,22 +42,78 @@ struct expression_semval {
 /* Bison Declarations */
 
 %union {
-    char* ident; // needed for name of identifier
-    int val;     // needed for value of number
+   int junk;
+   char* ident; // needed for name of identifier
+   int val;     // needed for value of number
 }
+
 // Start Symbol
 %start prog_start
+
+%type <code>   Program
+%type <code>   Decl
+%type <code>   statements
+%type <code>   StmtList
+%type <code>   ExpList
+%type <code>   FunctionDecl
+%type <code>   BoolExp
+%type <code>   BoolExp
+%type <ident>   Exp
+%type <code>   Stmt
+%type <code>   ReadStmt
+%type <code>   WriteStmt
+
 // Reserved Words
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
-// Arithmetic Operators
-%left SUB ADD MULT DIV MOD
-// Comparison Operators
-%left EQ NEQ LT GT LTE GTE
-// Other Special Symbols
-%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
-// Identifiers and Numbers
-%token <val> NUMBER
-%token <ident> IDENT
+%token      <junk> 	LO
+%left       <junk> 	FUNCTION 
+%token      <junk> 	BEGIN_PARAMS 
+%token      <junk> 	END_PARAMS 
+%token      <junk> 	BEGIN_LOCALS 
+%token      <junk> 	END_LOCALS 
+%token      <junk> 	BEGIN_BODY 
+%token      <junk> 	END_BODY
+%token      <junk> 	ARRAY
+%token      <junk> 	OF
+%token      <junk> 	ASSIGN
+%token      <junk> 	IF
+%token      <junk> 	THEN
+%token      <junk> 	ENDIF
+%token      <junk> 	ELSE
+%token		<junk<	ELSEIF
+%token      <junk> 	WHILE
+%token      <junk> 	BEGINLOOP
+%token      <junk> 	ENDLOOP
+%token      <junk> 	DO
+%token      <junk> 	READ
+%token      <junk> 	WRITE
+%token      <junk> 	CONTINUE
+%token      <junk> 	RETURN
+%token		<junk>	IDENT
+%token      <junk> 	INTEGER
+%token      <val> 	NUMBER
+%token      <junk> 	ID
+%token      <junk> 	TRUE
+%token      <junk> 	FALSE
+%token      <junk> 	ASMT
+%left     			OR
+%left     			AND
+%right    			NOT
+%nonassoc 			NE EQ LE GE LTE GTE
+%left     			ADD SUB
+%left			 	MULT DIV MOD
+%left     			SEMICOLON
+%left     			COLON
+%left     			COMMA
+%left     			R_PAREN
+%left     			L_PAREN
+%left     			R_SQUARE_BRACKET
+%left     			L_SQUARE_BRACKET
+
+
+
+
+
+
 
 /* Grammar Rules */
 %%
