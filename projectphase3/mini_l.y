@@ -8,13 +8,38 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>	
+#include <osstream>
+#include <iostream>
+#include <cstdlib>
+
 void yyerror(const char *msg);
+int vectorSize;
+string prefix;
+string suffix;
+
+extern int reductionCt;
+extern int listCt;
+extern ostringstream rules;
+extern ostringstream decs;
+extern ostringstream code;
+extern ostringstream init;
+
+
 extern int currLine;
 extern int currPosition;
+
+
 FILE * yyin;
 extern int yylex();
+
+struct expression_semval {
+	std::string code;
+	std::string result_id; // aka 'place'
+};
+
 %}
 /* Bison Declarations */
+
 %union {
     char* ident; // needed for name of identifier
     int val;     // needed for value of number
