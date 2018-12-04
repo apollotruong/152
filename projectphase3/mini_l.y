@@ -1,5 +1,5 @@
 /* CS152 Project Phase 2 */
-/* Apollo Truong, Sidney Son */
+/* Apollo Truong, SIDENTney Son */
 
 /* A parser for the mini-L language using Bison */
 
@@ -35,7 +35,7 @@ extern int yylex();
 
 struct expression_semval {
 	std::string code;
-	std::string result_id; // aka 'place'
+	std::string result_IDENT; // aka 'place'
 };
 
 %}
@@ -43,7 +43,7 @@ struct expression_semval {
 
 %union {
    int junk;
-   char* ident; // needed for name of identifier
+   char* ident; // needed for name of IDENTentifier
    int val;     // needed for value of number
 }
 
@@ -58,7 +58,7 @@ struct expression_semval {
 %type <code>   FunctionDecl
 %type <code>   BoolExp
 %type <code>   BoolExp
-%type <ident>   Exp
+%type <ident>  Exp
 %type <code>   Stmt
 %type <code>   ReadStmt
 %type <code>   WriteStmt
@@ -88,10 +88,10 @@ struct expression_semval {
 %token      <junk> 	WRITE
 %token      <junk> 	CONTINUE
 %token      <junk> 	RETURN
-%token		<junk>	IDENT
+%token		<junk>	INTEGER
 %token      <junk> 	INTEGER
 %token      <val> 	NUMBER
-%token      <junk> 	ID
+%token      <junk> 	IDENT
 %token      <junk> 	TRUE
 %token      <junk> 	FALSE
 %token      <junk> 	ASMT
@@ -117,117 +117,320 @@ struct expression_semval {
 
 /* Grammar Rules */
 %%
-prog_start:     functions {printf("prog_start -> functions\n");}
-                ;
+Program:          /* EMPTY */    
+                     { 
+                        rules << "Program -> /* EMPTY */ \n"; 
+                     }
+                  |  Program FunctionDecl       
+                     { 
+                        rules << "Program -> ProgramFunctionDecl \n"; 
+                     }
+                  ;   
 
-functions:      {printf("functions -> epsilon\n");}
-                |   function functions {printf("functions -> function functions\n");}
-                ;
-function:       FUNCTION ident SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY {printf("function -> FUNCTION ident SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY\n");}
-                ;
+StmtList:         Stmt ';'          // nonempty, semicolon terminated. *
+                     { 
+                        rules << "StmtList -> Stmt \n"; 
+                     }
+                  |  StmtList Stmt ';'
+                     { 
+                        rules << "StmtList -> StmtList Stmt ';' \n"; 
+                     }  
+                   ;
 
-declarations:   {printf("declarations -> epsilon\n");}
-                |   declaration SEMICOLON declarations {printf("declarations -> declaration SEMICOLON declarations\n");} 
-                ;
+ExpList:          /* EMPTY */      // possibly empty, comma separated. *
+                     { 
+                        rules << "ExpList -> /* EMPTY */ \n"; 
+                     }                       
+                  |  ExpList ',' Exp        
+                     { 
+                        rules << "ExpList -> Explist ',' Exp \n"; 
+                     }     
+                  ;
 
-declaration:    identifiers COLON INTEGER {printf("declaration -> identifiers COLON INTEGER\n");}
-                |   identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {printf("declaration -> identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER\n");}
-                ;
+FunctionDecl:     FUNCTION IDENT ';' BEGINPARAMS DeclList  ENDPARAMS       
+                  BEGINLOCALS DeclList  ENDLOCALS
+                  BEGINBODY   StmtList  ENDBODY
+                     {  
+                        rules << "FunctionDecl -> FUNCTION IDENT ';' \n";
+                        rules << "   BEGINPARAMS DeclList  ENDPARAMS \n"; // scalars
+                        rules << "   BEGINLOCALS DeclList  ENDLOCALS \n";
+                        rules << "   BEGINBODY   StmtList  ENDBODY \n";
+                                                // for code, must expand lists
+                     }
+                  ;
 
-identifiers:    ident {printf("identifiers -> ident \n");}
-                |   ident COMMA identifiers {printf("identifiers -> ident COMMA identifiers\n");}
-                ;
+Decl:             IDENT ':' INTEGER                      // A scalar variable *
+                     { 
+                        rules << "Decl -> IDENT ':' INTEGER \n"; 
+                        code << ". " << *($1) << "\n";
+                     }
+                  |  IDENT ':' ARRAY '[' NUMBER ']' OF INTEGER   // A vector var *
+                     { 
+                        rules << "Decl -> IDENT ':' ARRAY '[' NUMBER ']' OF INTEGER \n"; 
+                        vectorSize = $5; 
+                        code  << ".[] " << *($1) << ", " << vectorSize << "\n";
+	                  }
+                  |  IDENT ',' Decl                           // right recursion *
+    		            { 
+                        rules << "VectorDec. ->  IDENT ',' VectorDecl \n"; 
+                        code  << ".[] " << *($1) << ", " << vectorSize << "\n";
+		               }
+                  ; // vectorSize is global declared at the top of main.cc
 
-ident:          IDENT {printf("ident -> IDENT %s \n", $1);}
-                ;
+DeclList:         /* EMPTY */   // possibly empty, semicolon terminated.
+                     { 
+                        rules << "DeclList -> EMPTY\n"; 
+                     } 
+                  |  DeclList Decl ';'                      // left recursion *
+                     {
+                        rules << "DeclList -> DeclList Decl ';' \n"; 
+                     }
+                  ;
 
-statements:     {printf("statements -> epsilon\n");}
-                |   statement SEMICOLON statements {printf("statements -> statement SEMICOLON statements\n");}
-                ;
+BoolExp:          TRUE                   
+                     { 
+                        rules << " TRUE \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 	
+                        code << "= " << $$ << ", " << 1 << "\n";     
+	                  }
+                  |  FALSE                  
+                     { 
+                        rules << " FALSE \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << "= " << $$ << ", " << 0 << "\n";     
+		               }                    
+                  |  '(' BoolExp ')'
+                     { 
+                        rules << " '(' BoolExp ')' \n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "= " << *$$ << ", " << *$2 << "\n";
+                     }     
+                  |  NOT BoolExp
+                     {
+                        rules << " NOT BoolExp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << "! " << *$$ << ", " << *$2 << "\n";
+                     }
+                  |  BoolExp AND BoolExp    
+                     { 
+                        rules << " BoolExp AND BoolExp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << "&& " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
+		               }
+                  |  BoolExp OR BoolExp     
+                     { 
+                        rules << " BoolExp OR BoolExp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << "|| " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
+		               }
+                  |  Exp EQ Exp           
+                     { 
+                        rules << " Exp EQ Exp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 	
+                        code << "== " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
+	                  }
+                  |  Exp NE Exp           
+                     { 
+                        rules << " Exp NE Exp \n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "!= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
+		               }
+                  |  Exp GE Exp           
+                     { 
+                        rules << " Exp GE Exp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << ">= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
+		               }
+                  |  Exp LE Exp           
+                     { 
+                        rules << " Exp LE Exp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << "<= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
+		               }
+                  |  Exp '>' Exp           
+                     { 
+                        rules << " Exp '>' Exp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << "> " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
+		               }
+                  |  Exp '<' Exp           
+                     { 
+                        rules << " Exp '<' Exp \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                        code << "< " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
+		               }
+                  ;
 
-statement:      var ASSIGN expr {printf("statement -> var ASSIGN expr\n");}
-                |   IF bool-expr THEN statements ENDIF {printf("statement -> IF bool-expr THEN statements ENDIF\n");}
-                |   IF bool-expr THEN statements ELSE statements ENDIF {printf("statement -> IF bool-expr THEN statements ELSE statements ENDIF\n");}
-                |   WHILE bool-expr BEGINLOOP statements ENDLOOP {printf("statement -> WHILE bool-expr BEGINLOOP statements ENDLOOP\n");}
-                |   DO BEGINLOOP statements ENDLOOP WHILE bool-expr {printf("statement -> DO BEGINLOOP statements ENDLOOP WHILE bool-expr\n");}
-                |   READ vars {printf("statement -> READ vars\n");}
-                |   WRITE vars {printf("statement -> WRITE vars\n");}
-                |   CONTINUE {printf("statement -> CONTINUE\n");}
-                |   RETURN expr {printf("statement -> RETURN expr\n");}
-                ;
+Exp:              IDENT                                 // scalar variable *
+                     { rules << "Exp -> IDENT\n";
+                       $$ = new string("_T" + itoa(reductionCt++)); 
+                       code << "= " << *$$ << ", " << *$1 << "\n";
+		               }
+                  |  IDENT '[' Exp ']'       //  vector/subscripted variable *  
+                     { 
+                        rules << "Exp -> IDENT '[' Exp ']' \n"; 
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "=[] " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
+                     }
+                  |  Exp '+' Exp	    
+                     { 
+                        rules << "Exp -> Exp '+' Exp\n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "+ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
+                     }
+                  |  Exp '-' Exp	    
+                     { 
+                        rules << "Exp -> Exp '-' Exp\n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "- " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
+                     }
+                  |  Exp '*' Exp	    
+                     { 
+                        rules << "Exp -> Exp '*' Exp\n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "* " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
+                     }
+                  |  Exp '/' Exp	    
+                     { 
+                        rules << "Exp -> Exp '/' Exp\n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "/ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
+                     }
+                  |  Exp '%' Exp	    
+                     { 
+                        rules << "Exp -> Exp '%' Exp\n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "% " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
+                     }
+                  |  '-' Exp  %prec '('     
+                     { 
+                        rules << "Exp -> '-' Exp\n";
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        code << "- " << *$$ << ", " << 0 << ", " << *$2 << "\n";
+                     }
+                  |  NUMBER                 
+                     { 
+                        $$ = new string("_T" + itoa(reductionCt++));
+                        rules << "Exp -> NUMBER\n";
+                        code << "= " << *$$ << ", " << $1 << "\n";
+                     }
+                  |  '(' Exp ')'             
+                     { 
+                        rules << "Exp -> '(' Exp ')' \n";
+                        $$ = new string("_T" + itoa(reductionCt++));  
+                        code << "= " << *$$ << ", " << *$2 << "\n";
+                     }
+                  |  IDENT '(' ExpList ')'      // function call         // ???
+                     { 
+                        rules << "Exp -> IDENT '(' Exp ')' \n";
+                        $$ = new string("_T" + itoa(reductionCt++)); 
+                     }
+	               ;
 
-bool-expr:      rel-and-exprs {printf("bool-expr -> rel-and-exprs\n");}
-                ;
+ReadStmt:         READ IDENT                                            // *
+                     { 
+                        rules << "ReadStmt -> Read IDENT \n";
+                        code  << ".< " << *$2 << "\n";
+		               }
+                  |  READ IDENT '[' Exp ']'                                
+                     { 
+                        rules << "ReadStmt -> READ IDENT '[' Exp ']' \n";
+                        code  << ".[]< " << *$2 << ", " << *$4 << "\n";
+                     }
+                  |  ReadStmt ',' IDENT                     // left recursion *
+		               { 
+                        rules << "ReadStmt -> ReadStmt ',' IDENT \n";
+                        code  << ".< " << *$3 << "\n";
+                     }
+                  |  ReadStmt ',' IDENT '[' Exp ']'         // left recursion *
+		               { 
+                        rules << "ReadStmt -> ReadStmt ',' IDENT '[' Exp ']'\n"; 
+                        code  << ".[]< " << *$3 << ", " << $5 << "\n";
+                     }
+                  ;
 
-rel-and-exprs:	rel-and-expr {printf("rel-and-exprs -> rel-and-expr\n");}
-		|	rel-and-expr OR rel-and-exprs {printf("rel-and-exprs -> rel-and-expr OR rel-and-exprs\n");}
-		;
+WriteStmt:        WRITE Exp                                          // *
+                     { 
+                        rules << "WriteStmt -> WRITE Exp \n";
+                        code << ".> " << *$2 << "\n";
+                     }
+                  |  WriteStmt ',' Exp                   // left recursion *
+                     { 
+                        rules << "WriteStmt -> WriteStmt ',' Exp \n";
+                        code << ".> " << *$3 << "\n";
+                     }
+                  ;
 
-rel-and-expr:   rel-exprs {printf("rel-and-expr -> rel-exprs\n");}
-                ;
-
-rel-exprs:	rel-expr {printf("rel-exprs -> rel-expr\n");}
-		|   rel-expr AND rel-exprs {printf("rel-and-exprs -> rel-expr AND rel-exprs\n");}
-		;
-
-rel-expr:       NOT expr comp expr {printf("rel-expr -> NOT expr comp expr\n");}
-                |   NOT TRUE {printf("rel-expr -> NOT TRUE\n");}
-                |   NOT FALSE {printf("rel-expr -> NOT FALSE\n");}
-                |   NOT L_PAREN bool-expr R_PAREN {printf("rel-expr -> NOT L_PAREN bool-expr R_PAREN\n");}
-                |   expr comp expr {printf("rel-expr -> expr comp expr\n");}
-                |   TRUE {printf("rel-expr -> TRUE\n");}
-                |   FALSE {printf("rel-expr -> FALSE\n");}
-                |   L_PAREN bool-expr R_PAREN {printf("rel-expr -> L_PAREN bool-expr R_PAREN\n");}
-                ;
-
-comp:           EQ {printf("comp -> EQ\n");}
-                |   NEQ {printf("comp -> NEQ\n");}
-                |   LT {printf("comp -> LT\n");}
-                |   GT {printf("comp -> GT\n");}
-                |   LTE {printf("comp -> LTE\n");}
-                |   GTE {printf("comp -> GTE\n");}
-                ;
-
-exprs:          expr {printf("exprs -> expr\n");}
-                |   expr COMMA exprs {printf("exprs -> expr COMMA exprs\n");}
-                ;
-
-expr:           mult-expr expr-loop {printf("expr -> mult-expr expr-loop\n");}
-		; 	
-                
-expr-loop:	{printf("expr-loop -> epsilon \n");}
-		|   ADD mult-expr expr-loop {printf("expr-loop -> ADD mult-expr expr-loop \n");}
-		|   SUB mult-expr expr-loop {printf("expr-loop -> SUB mult-expr expr-loop \n");}
-		;
-
-mult-expr:      term mult-expr-loop {printf("mult-expr -> term mult-expr-loop \n");}
-		;
-
-mult-expr-loop:	{printf("mult-expr-loop -> epsilon\n");}
-		|   MULT term mult-expr-loop {printf("mult-expr -> MULT term mult-expr-loop \n");}
-                |   DIV term mult-expr-loop {printf("mult-expr -> DIV term mult-expr-loop\n");}
-                |   MOD term mult-expr-loop {printf("mult-expr -> MOD term mult-expr-loop \n");}
-                ;
-
-term:           SUB var {printf("term -> SUB var\n");}
-                |   SUB number {printf("term -> SUB number\n");}
-                |   SUB L_PAREN expr R_PAREN {printf("term -> SUB L_PAREN expr R_PAREN\n");}
-                |   SUB ident L_PAREN exprs R_PAREN {printf("term -> SUB ident L_PAREN exprs R_PAREN\n");}
-                |   var {printf("term -> var\n");}
-                |   number {printf("term -> number\n");}
-                |   L_PAREN expr R_PAREN {printf("term -> L_PAREN expr R_PAREN\n");}
-                |   ident L_PAREN exprs R_PAREN {printf("term -> ident L_PAREN exprs R_PAREN\n");}
-                ;
-
-number:         NUMBER {printf("number -> NUMBER %d\n", $1);}
-                ;
-
-vars:           var {printf("vars -> var\n");}
-                |   var COMMA vars {printf("vars -> var COMMA vars\n");}
-                ;
-
-var:            ident{printf("var -> ident\n");}
-                | ident L_SQUARE_BRACKET expr R_SQUARE_BRACKET {printf("var -> ident L_SQUARE_BRACKET expr R_SQUARE_BRACKET\n");}
+Stmt:             IDENT ASMT Exp    // The desination can be either scalar *
+                     { 
+                        rules << "Stmt -> IDENT ASMT Exp\n";
+                        code << "= " << *$1 << ", " << *$3 << "\n";
+		               }
+                  |  IDENT '[' Exp ']' ASMT Exp             // or subscripted *
+		               { 
+                        rules << "Stmt -> IDENT '[' Exp ']' ASMT Exp\n";
+                        code << "[]= " << *$1 << ", " << *$3 << ", " << *$6 << "\n";
+		               }
+                  |  ReadStmt                                 // See above *
+		               { 
+                        rules << "Stmt -> ReadStmt" ; 
+                     }                  // *
+                  |  WriteStmt                                // see above *
+		               { 
+                        rules << "Stmt -> WriteStmt" ; 
+                     }                 // *
+                  |  IF BoolExp THEN StmtList ELSE StmtList ENDIF    // outline
+		               { 
+                        rules << "Stmt -> IF BoolExp THEN StmtList ELSE StmtList ENDIF\n";
+                        code << "?:= THEN, BoolExp \n"        // if BoolExp goto THEN
+		                  << ":= ELSE \n"                  // goto ELSE
+                        << ":THEN \n"                    // THEN:
+                        << "..."                         // dump StmtList
+                        << ":= ENDIF \n"                 // goto ENDIF
+                        << ":ELSE \n"                    // ELSE: 
+			               << "..."                         // StmtList 
+			               << ":ENDIF \n"                   // ENDIF:
+		               }
+                  |  IF BoolExp THEN StmtList ENDIF                  // outline
+                     { 
+                        rules << "Stmt -> IF BoolExp THEN StmtList ENDIF\n";
+                        code << "?:= THEN, BoolExp \n"        // if BoolExp goto THEN
+		                  << ":= ELSE \n"                  // goto ELSE
+                        << ":THEN \n"                    // THEN:
+                        << "..."                         // StmtList
+                        << ":ELSE \n"                    // ELSE: 
+		               }  
+                  |  WHILE BoolExp BEGINLOOP StmtList ENDLOOP        // outline
+		               { 
+                        rules << "Stmt -> WHILE BoolExp BEGINLOOP StmtList ENDLOOP\n"; 
+                        code << ": WHILE \n"                  // WHILE:
+			               << "?:= BEGINLOOP, BoolExp \n"
+			                           // if boolExp goto BEGINLOOP
+                        << ":= EXIT \n"        // otherwise, goto EXIT
+			               << ": BEGINLOOP \n"              // BEGINLOOP:
+			               << "..."                         // StmtList
+			               << ":= WHILE \n"                 // goto WHILE
+			               << ": EXIT \n"                   // EXIT:
+		               }
+                  |  DO BEGINLOOP StmtList ENDLOOP WHILE BoolExp // outline
+		               { 
+                        rules << "Stmt -> DO BEGINLOOP StmtList ENDLOOP "
+		                  << "WHILE BoolExp\n";           
+                        code  << ": DO BEGINLOOP \n"          // BEGINLOOP:
+                        << "..."                        // StmtList
+			               << "?:=  << BEGINLOOP <<,  << BoolExp \n"
+			               // if BoolExp goto BEGINLOOP
+		               }
+                  |  CONTINUE                                // outline
+		               { 
+                        rules << "Stmt -> CONTINUE\n";
+                        code  << ":= BEGINLOOP\n"
+		               }
+                  |  RETURN Exp                                        // ???
+		               { 
+                        rules << "Stmt -> RETURN Exp\n";               
+		               }
+                  ;
 
 %%
 /* Additional C Code */
