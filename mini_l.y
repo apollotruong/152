@@ -127,13 +127,13 @@ Program:          /* EMPTY */
                      }
                   ;   
 
-StmtList:         Stmt ';'          // nonempty, semicolon terminated. *
+StmtList:         Stmt SEMICOLON          // nonempty, semicolon terminated. *
                      { 
                         rules << "StmtList -> Stmt \n"; 
                      }
-                  |  StmtList Stmt ';'
+                  |  StmtList Stmt SEMICOLON
                      { 
-                        rules << "StmtList -> StmtList Stmt ';' \n"; 
+                        rules << "StmtList -> StmtList Stmt SEMICOLON \n"; 
                      }  
                    ;
 
@@ -141,38 +141,39 @@ ExpList:          /* EMPTY */      // possibly empty, comma separated. *
                      { 
                         rules << "ExpList -> /* EMPTY */ \n"; 
                      }                       
-                  |  ExpList ',' Exp        
+                  |  ExpList COMMA Exp        
                      { 
-                        rules << "ExpList -> Explist ',' Exp \n"; 
+                        rules << "ExpList -> Explist COMMA Exp \n"; 
                      }     
                   ;
 
-FunctionDecl:     FUNCTION IDENT ';' BEGINPARAMS DeclList  ENDPARAMS       
+FunctionDecl:     FUNCTION IDENT SEMICOLON BEGINPARAMS DeclList  ENDPARAMS       
                   BEGINLOCALS DeclList  ENDLOCALS
                   BEGINBODY   StmtList  ENDBODY
                      {  
-                        rules << "FunctionDecl -> FUNCTION IDENT ';' \n";
+                        rules << "FunctionDecl -> FUNCTION IDENT SEMICOLON \n";
                         rules << "   BEGINPARAMS DeclList  ENDPARAMS \n"; // scalars
                         rules << "   BEGINLOCALS DeclList  ENDLOCALS \n";
                         rules << "   BEGINBODY   StmtList  ENDBODY \n";
                                                 // for code, must expand lists
+                        code << "func " << *($1) << "\n";
                      }
                   ;
 
-Decl:             IDENT ':' INTEGER                      // A scalar variable *
+Decl:             IDENT COLON INTEGER                      // A scalar variable *
                      { 
                         rules << "Decl -> IDENT ':' INTEGER \n"; 
                         code << ". " << *($1) << "\n";
                      }
-                  |  IDENT ':' ARRAY '[' NUMBER ']' OF INTEGER   // A vector var *
+                  |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER   // A vector var *
                      { 
-                        rules << "Decl -> IDENT ':' ARRAY '[' NUMBER ']' OF INTEGER \n"; 
+                        rules << "Decl -> IDENT ':' ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER \n"; 
                         vectorSize = $5; 
                         code  << ".[] " << *($1) << ", " << vectorSize << "\n";
 	                  }
-                  |  IDENT ',' Decl                           // right recursion *
+                  |  IDENT COMMA Decl                           // right recursion *
     		            { 
-                        rules << "VectorDec. ->  IDENT ',' VectorDecl \n"; 
+                        rules << "VectorDec. ->  IDENT COMMA VectorDecl \n"; 
                         code  << ".[] " << *($1) << ", " << vectorSize << "\n";
 		               }
                   ; // vectorSize is global declared at the top of main.cc
@@ -181,9 +182,9 @@ DeclList:         /* EMPTY */   // possibly empty, semicolon terminated.
                      { 
                         rules << "DeclList -> EMPTY\n"; 
                      } 
-                  |  DeclList Decl ';'                      // left recursion *
+                  |  DeclList Decl SEMICOLON                      // left recursion *
                      {
-                        rules << "DeclList -> DeclList Decl ';' \n"; 
+                        rules << "DeclList -> DeclList Decl SEMICOLON \n"; 
                      }
                   ;
 
@@ -199,9 +200,9 @@ BoolExp:          TRUE
                         $$ = new string("_T" + itoa(reductionCt++)); 
                         code << "= " << $$ << ", " << 0 << "\n";     
 		               }                    
-                  |  '(' BoolExp ')'
+                  |  L_PAREN BoolExp R_PAREN
                      { 
-                        rules << " '(' BoolExp ')' \n";
+                        rules << " L_PAREN BoolExp R_PAREN \n";
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "= " << *$$ << ", " << *$2 << "\n";
                      }     
@@ -247,15 +248,15 @@ BoolExp:          TRUE
                         $$ = new string("_T" + itoa(reductionCt++)); 
                         code << "<= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
 		               }
-                  |  Exp '>' Exp           
+                  |  Exp GT Exp           
                      { 
-                        rules << " Exp '>' Exp \n";
+                        rules << " Exp GT Exp \n";
                         $$ = new string("_T" + itoa(reductionCt++)); 
                         code << "> " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
 		               }
-                  |  Exp '<' Exp           
+                  |  Exp LT Exp           
                      { 
-                        rules << " Exp '<' Exp \n";
+                        rules << " Exp LT Exp \n";
                         $$ = new string("_T" + itoa(reductionCt++)); 
                         code << "< " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
 		               }
@@ -266,45 +267,45 @@ Exp:              IDENT                                 // scalar variable *
                        $$ = new string("_T" + itoa(reductionCt++)); 
                        code << "= " << *$$ << ", " << *$1 << "\n";
 		               }
-                  |  IDENT '[' Exp ']'       //  vector/subscripted variable *  
+                  |  IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET       //  vector/subscripted variable *  
                      { 
-                        rules << "Exp -> IDENT '[' Exp ']' \n"; 
+                        rules << "Exp -> IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET \n"; 
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "=[] " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
                      }
-                  |  Exp '+' Exp	    
+                  |  Exp ADD Exp	    
                      { 
-                        rules << "Exp -> Exp '+' Exp\n";
+                        rules << "Exp -> Exp ADD Exp\n";
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "+ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
                      }
-                  |  Exp '-' Exp	    
+                  |  Exp SUB Exp	    
                      { 
-                        rules << "Exp -> Exp '-' Exp\n";
+                        rules << "Exp -> Exp SUB Exp\n";
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "- " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
                      }
-                  |  Exp '*' Exp	    
+                  |  Exp MULT Exp	    
                      { 
-                        rules << "Exp -> Exp '*' Exp\n";
+                        rules << "Exp -> Exp MULT Exp\n";
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "* " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
                      }
-                  |  Exp '/' Exp	    
+                  |  Exp DIV Exp	    
                      { 
-                        rules << "Exp -> Exp '/' Exp\n";
+                        rules << "Exp -> Exp DIV Exp\n";
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "/ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
                      }
-                  |  Exp '%' Exp	    
+                  |  Exp MOD Exp	    
                      { 
-                        rules << "Exp -> Exp '%' Exp\n";
+                        rules << "Exp -> Exp MOD Exp\n";
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "% " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
                      }
-                  |  '-' Exp  %prec '('     
+                  |  SUB Exp  %prec L_PAREN     
                      { 
-                        rules << "Exp -> '-' Exp\n";
+                        rules << "Exp -> SUB Exp\n";
                         $$ = new string("_T" + itoa(reductionCt++));
                         code << "- " << *$$ << ", " << 0 << ", " << *$2 << "\n";
                      }
@@ -314,15 +315,15 @@ Exp:              IDENT                                 // scalar variable *
                         rules << "Exp -> NUMBER\n";
                         code << "= " << *$$ << ", " << $1 << "\n";
                      }
-                  |  '(' Exp ')'             
+                  |  L_PAREN Exp R_PAREN             
                      { 
-                        rules << "Exp -> '(' Exp ')' \n";
+                        rules << "Exp -> L_PAREN Exp R_PAREN \n";
                         $$ = new string("_T" + itoa(reductionCt++));  
                         code << "= " << *$$ << ", " << *$2 << "\n";
                      }
-                  |  IDENT '(' ExpList ')'      // function call         // ???
+                  |  IDENT L_PAREN ExpList R_PAREN      // function call         // ???
                      { 
-                        rules << "Exp -> IDENT '(' Exp ')' \n";
+                        rules << "Exp -> IDENT L_PAREN Exp R_PAREN \n";
                         $$ = new string("_T" + itoa(reductionCt++)); 
                      }
 	               ;
@@ -332,19 +333,19 @@ ReadStmt:         READ IDENT                                            // *
                         rules << "ReadStmt -> Read IDENT \n";
                         code  << ".< " << *$2 << "\n";
 		               }
-                  |  READ IDENT '[' Exp ']'                                
+                  |  READ IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET                                
                      { 
-                        rules << "ReadStmt -> READ IDENT '[' Exp ']' \n";
+                        rules << "ReadStmt -> READ IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET \n";
                         code  << ".[]< " << *$2 << ", " << *$4 << "\n";
                      }
-                  |  ReadStmt ',' IDENT                     // left recursion *
+                  |  ReadStmt COMMA IDENT                     // left recursion *
 		               { 
-                        rules << "ReadStmt -> ReadStmt ',' IDENT \n";
+                        rules << "ReadStmt -> ReadStmt COMMA IDENT \n";
                         code  << ".< " << *$3 << "\n";
                      }
-                  |  ReadStmt ',' IDENT '[' Exp ']'         // left recursion *
+                  |  ReadStmt COMMA IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET         // left recursion *
 		               { 
-                        rules << "ReadStmt -> ReadStmt ',' IDENT '[' Exp ']'\n"; 
+                        rules << "ReadStmt -> ReadStmt COMMA IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET\n"; 
                         code  << ".[]< " << *$3 << ", " << $5 << "\n";
                      }
                   ;
@@ -354,9 +355,9 @@ WriteStmt:        WRITE Exp                                          // *
                         rules << "WriteStmt -> WRITE Exp \n";
                         code << ".> " << *$2 << "\n";
                      }
-                  |  WriteStmt ',' Exp                   // left recursion *
+                  |  WriteStmt COMMA Exp                   // left recursion *
                      { 
-                        rules << "WriteStmt -> WriteStmt ',' Exp \n";
+                        rules << "WriteStmt -> WriteStmt COMMA Exp \n";
                         code << ".> " << *$3 << "\n";
                      }
                   ;
@@ -366,9 +367,9 @@ Stmt:             IDENT ASMT Exp    // The desination can be either scalar *
                         rules << "Stmt -> IDENT ASMT Exp\n";
                         code << "= " << *$1 << ", " << *$3 << "\n";
 		               }
-                  |  IDENT '[' Exp ']' ASMT Exp             // or subscripted *
+                  |  IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET ASMT Exp             // or subscripted *
 		               { 
-                        rules << "Stmt -> IDENT '[' Exp ']' ASMT Exp\n";
+                        rules << "Stmt -> IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET ASMT Exp\n";
                         code << "[]= " << *$1 << ", " << *$3 << ", " << *$6 << "\n";
 		               }
                   |  ReadStmt                                 // See above *
