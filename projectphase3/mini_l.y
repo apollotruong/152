@@ -23,6 +23,24 @@ vector<string> states;
 vector<string> temps;
 int tempCount = 0;
 int labelCount = 0;
+
+vector<string> functions;
+vector<string> parameters;
+vector<string> operand;
+vector<string> symbols;
+vector<string> statements;
+
+vector<string> ifStatements;
+
+vector<string> stack;
+
+bool addParam = false;
+int labelNumber = 0;
+int varNumber = 0;
+stringstream stream;
+
+
+
 %}
 /* Bison Declarations */
 %union {
@@ -112,10 +130,29 @@ statement:     var ASSIGN expr
                }
                |   IF bool-expr THEN statements ENDIF 
                {
-
+					labelNumber++;
+					ifTrue = "IF_TRUE_LABEL_" + to_string(labelNumber);
+					string endIf = "End_If_LABEL" + to_string(labelNumber);
+					statements.push_back("?:= " + ifTrue + ", " + operand.back());
+					operand.pop_back();
+					statements.push_back(":= " + ifElse);
+					statements.push_back(": " ++ endIf);
                }
-               |   IF bool-expr THEN statements ELSE statements ENDIF { /*printf("statement -> IF bool-expr THEN statements ELSE statements ENDIF\n");*/}
-               |   WHILE bool-expr BEGINLOOP statements ENDLOOP { /*printf("statement -> WHILE bool-expr BEGINLOOP statements ENDLOOP\n");*/}
+               |   IF bool-expr THEN statements ELSE statements ENDIF {
+
+					string ifTrue = "IF_TRUE_LABEL_" + to_string(labelNumber);
+					string ifElse = "IF_ELSE_LABEL_" + to_string(labelNumber);
+					string endIf = "END_IF_LABEL_" + to_string(labelNumber);
+					statements.push_back("?:= " + ifTrue + ", " + operand.back();
+					operand.pop_back();
+					statements.push_back(":= " + ifElse);
+					statements.push_back(":= + endIf);
+				}
+
+               |   WHILE bool-expr BEGINLOOP statements ENDLOOP {
+					labelNumber++;
+					string whileLabel = "WHILE_LOOP_ + t_string(labelNumber);
+					statements.push_back(whileLabel);}
                |   DO BEGINLOOP statements ENDLOOP WHILE bool-expr { /*printf("statement -> DO BEGINLOOP statements ENDLOOP WHILE bool-expr\n");*/}
                |   READ vars 
                {
