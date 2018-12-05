@@ -1,441 +1,489 @@
 /* CS152 Project Phase 2 */
-/* Apollo Truong, SIDENTney Son */
+/* Apollo Truong, Sidney Son */
 
 /* A parser for the mini-L language using Bison */
 
 
 /* C Declarations */
+
 %{
-#include <stdio.h>
-#include <stdlib.h>	
-#include <ostream>
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+	#include <assert.h>
 
-void yyerror(const char *msg);
-int vectorSize;
-string prefix;
-string suffix;
+    #include <vector>
+    #include <string>
+    #include <sstream>
+    #include <iostream>
 
-extern int reductionCt;
-extern int listCt;
-extern ostringstream rules;
-extern ostringstream decs;
-extern ostringstream code;
-extern ostringstream init;
+    using namespace std;
 
+    int yylex(void);
+    void yyerror(const char *msg);
+    extern int currLine;
+    extern int currPosition;
+    extern FILE * yyin;
 
-extern int currLine;
-extern int currPosition;
+    vector<string> functions;
+    vector<string> parameters;
+    vector<string> operand;
+    vector<string> symbols;
+    vector<string> symbolTypes;
+    vector<string> statements;
 
+    vector<string> ifStatements; //
 
-FILE * yyin;
-extern int yylex();
+    vector<string> crossGrammar;
 
-struct expression_semval {
-	std::string code;
-	std::string result_IDENT; // aka 'place'
-};
+    bool addParam = false;
+    int labelNumber = 0;
+    int varNumber = 0;
+    stringstream stream;
 
 %}
-/* Bison Declarations */
+
 
 %union {
-   int junk;
-   char* ident; // needed for name of IDENTentifier
-   int val;     // needed for value of number
+   int ival;
+   char* charIdent;
 }
 
-// Start Symbol
+%error-verbose
 %start prog_start
+%token <ival> NUMBER
+%token <charIdent> IDENT
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY
+%token INTEGER ARRAY OF IF THEN ENDIF ELSE WHILE DO FOREACH IN BEGINLOOP ENDLOOP
+%token CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
+%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
+%left SUB ADD MULT DIV MOD
+%left EQ NEQ LT GT LTE GTE
 
-%type <code>   Program
-%type <code>   Decl
-%type <code>   statements
-%type <code>   StmtList
-%type <code>   ExpList
-%type <code>   FunctionDecl
-%type <code>   BoolExp
-%type <code>   BoolExp
-%type <ident>  Exp
-%type <code>   Stmt
-%type <code>   ReadStmt
-%type <code>   WriteStmt
-
-// Reserved Words
-%token      <junk> 	LO
-%left       <junk> 	FUNCTION 
-%token      <junk> 	BEGIN_PARAMS 
-%token      <junk> 	END_PARAMS 
-%token      <junk> 	BEGIN_LOCALS 
-%token      <junk> 	END_LOCALS 
-%token      <junk> 	BEGIN_BODY 
-%token      <junk> 	END_BODY
-%token      <junk> 	ARRAY
-%token      <junk> 	OF
-%token      <junk> 	ASSIGN
-%token      <junk> 	IF
-%token      <junk> 	THEN
-%token      <junk> 	ENDIF
-%token      <junk> 	ELSE
-%token		<junk<	ELSEIF
-%token      <junk> 	WHILE
-%token      <junk> 	BEGINLOOP
-%token      <junk> 	ENDLOOP
-%token      <junk> 	DO
-%token      <junk> 	READ
-%token      <junk> 	WRITE
-%token      <junk> 	CONTINUE
-%token      <junk> 	RETURN
-%token		<junk>	INTEGER
-%token      <junk> 	INTEGER
-%token      <val> 	NUMBER
-%token      <junk> 	IDENT
-%token      <junk> 	TRUE
-%token      <junk> 	FALSE
-%token      <junk> 	ASMT
-%left     			OR
-%left     			AND
-%right    			NOT
-%nonassoc 			NE EQ LE GE LTE GTE
-%left     			ADD SUB
-%left			 	MULT DIV MOD
-%left     			SEMICOLON
-%left     			COLON
-%left     			COMMA
-%left     			R_PAREN
-%left     			L_PAREN
-%left     			R_SQUARE_BRACKET
-%left     			L_SQUARE_BRACKET
-
-
-
-
-
-
-
-/* Grammar Rules */
-%%
-Program:          /* EMPTY */    
-                     { 
-                        rules << "Program -> /* EMPTY */ \n"; 
-                     }
-                  |  Program FunctionDecl       
-                     { 
-                        rules << "Program -> ProgramFunctionDecl \n"; 
-                     }
-                  ;   
-
-StmtList:         Stmt ';'          // nonempty, semicolon terminated. *
-                     { 
-                        rules << "StmtList -> Stmt \n"; 
-                     }
-                  |  StmtList Stmt ';'
-                     { 
-                        rules << "StmtList -> StmtList Stmt ';' \n"; 
-                     }  
-                   ;
-
-ExpList:          /* EMPTY */      // possibly empty, comma separated. *
-                     { 
-                        rules << "ExpList -> /* EMPTY */ \n"; 
-                     }                       
-                  |  ExpList ',' Exp        
-                     { 
-                        rules << "ExpList -> Explist ',' Exp \n"; 
-                     }     
-                  ;
-
-FunctionDecl:     FUNCTION IDENT ';' BEGINPARAMS DeclList  ENDPARAMS       
-                  BEGINLOCALS DeclList  ENDLOCALS
-                  BEGINBODY   StmtList  ENDBODY
-                     {  
-                        rules << "FunctionDecl -> FUNCTION IDENT ';' \n";
-                        rules << "   BEGINPARAMS DeclList  ENDPARAMS \n"; // scalars
-                        rules << "   BEGINLOCALS DeclList  ENDLOCALS \n";
-                        rules << "   BEGINBODY   StmtList  ENDBODY \n";
-                                                // for code, must expand lists
-                     }
-                  ;
-
-Decl:             IDENT ':' INTEGER                      // A scalar variable *
-                     { 
-                        rules << "Decl -> IDENT ':' INTEGER \n"; 
-                        code << ". " << *($1) << "\n";
-                     }
-                  |  IDENT ':' ARRAY '[' NUMBER ']' OF INTEGER   // A vector var *
-                     { 
-                        rules << "Decl -> IDENT ':' ARRAY '[' NUMBER ']' OF INTEGER \n"; 
-                        vectorSize = $5; 
-                        code  << ".[] " << *($1) << ", " << vectorSize << "\n";
-	                  }
-                  |  IDENT ',' Decl                           // right recursion *
-    		            { 
-                        rules << "VectorDec. ->  IDENT ',' VectorDecl \n"; 
-                        code  << ".[] " << *($1) << ", " << vectorSize << "\n";
-		               }
-                  ; // vectorSize is global declared at the top of main.cc
-
-DeclList:         /* EMPTY */   // possibly empty, semicolon terminated.
-                     { 
-                        rules << "DeclList -> EMPTY\n"; 
-                     } 
-                  |  DeclList Decl ';'                      // left recursion *
-                     {
-                        rules << "DeclList -> DeclList Decl ';' \n"; 
-                     }
-                  ;
-
-BoolExp:          TRUE                   
-                     { 
-                        rules << " TRUE \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 	
-                        code << "= " << $$ << ", " << 1 << "\n";     
-	                  }
-                  |  FALSE                  
-                     { 
-                        rules << " FALSE \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "= " << $$ << ", " << 0 << "\n";     
-		               }                    
-                  |  '(' BoolExp ')'
-                     { 
-                        rules << " '(' BoolExp ')' \n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "= " << *$$ << ", " << *$2 << "\n";
-                     }     
-                  |  NOT BoolExp
-                     {
-                        rules << " NOT BoolExp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "! " << *$$ << ", " << *$2 << "\n";
-                     }
-                  |  BoolExp AND BoolExp    
-                     { 
-                        rules << " BoolExp AND BoolExp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "&& " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-		               }
-                  |  BoolExp OR BoolExp     
-                     { 
-                        rules << " BoolExp OR BoolExp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "|| " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-		               }
-                  |  Exp EQ Exp           
-                     { 
-                        rules << " Exp EQ Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 	
-                        code << "== " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-	                  }
-                  |  Exp NE Exp           
-                     { 
-                        rules << " Exp NE Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "!= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp GE Exp           
-                     { 
-                        rules << " Exp GE Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << ">= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp LE Exp           
-                     { 
-                        rules << " Exp LE Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "<= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp '>' Exp           
-                     { 
-                        rules << " Exp '>' Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "> " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp '<' Exp           
-                     { 
-                        rules << " Exp '<' Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "< " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  ;
-
-Exp:              IDENT                                 // scalar variable *
-                     { rules << "Exp -> IDENT\n";
-                       $$ = new string("_T" + itoa(reductionCt++)); 
-                       code << "= " << *$$ << ", " << *$1 << "\n";
-		               }
-                  |  IDENT '[' Exp ']'       //  vector/subscripted variable *  
-                     { 
-                        rules << "Exp -> IDENT '[' Exp ']' \n"; 
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "=[] " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-                     }
-                  |  Exp '+' Exp	    
-                     { 
-                        rules << "Exp -> Exp '+' Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "+ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp '-' Exp	    
-                     { 
-                        rules << "Exp -> Exp '-' Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "- " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp '*' Exp	    
-                     { 
-                        rules << "Exp -> Exp '*' Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "* " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp '/' Exp	    
-                     { 
-                        rules << "Exp -> Exp '/' Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "/ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp '%' Exp	    
-                     { 
-                        rules << "Exp -> Exp '%' Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "% " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  '-' Exp  %prec '('     
-                     { 
-                        rules << "Exp -> '-' Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "- " << *$$ << ", " << 0 << ", " << *$2 << "\n";
-                     }
-                  |  NUMBER                 
-                     { 
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        rules << "Exp -> NUMBER\n";
-                        code << "= " << *$$ << ", " << $1 << "\n";
-                     }
-                  |  '(' Exp ')'             
-                     { 
-                        rules << "Exp -> '(' Exp ')' \n";
-                        $$ = new string("_T" + itoa(reductionCt++));  
-                        code << "= " << *$$ << ", " << *$2 << "\n";
-                     }
-                  |  IDENT '(' ExpList ')'      // function call         // ???
-                     { 
-                        rules << "Exp -> IDENT '(' Exp ')' \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                     }
-	               ;
-
-ReadStmt:         READ IDENT                                            // *
-                     { 
-                        rules << "ReadStmt -> Read IDENT \n";
-                        code  << ".< " << *$2 << "\n";
-		               }
-                  |  READ IDENT '[' Exp ']'                                
-                     { 
-                        rules << "ReadStmt -> READ IDENT '[' Exp ']' \n";
-                        code  << ".[]< " << *$2 << ", " << *$4 << "\n";
-                     }
-                  |  ReadStmt ',' IDENT                     // left recursion *
-		               { 
-                        rules << "ReadStmt -> ReadStmt ',' IDENT \n";
-                        code  << ".< " << *$3 << "\n";
-                     }
-                  |  ReadStmt ',' IDENT '[' Exp ']'         // left recursion *
-		               { 
-                        rules << "ReadStmt -> ReadStmt ',' IDENT '[' Exp ']'\n"; 
-                        code  << ".[]< " << *$3 << ", " << $5 << "\n";
-                     }
-                  ;
-
-WriteStmt:        WRITE Exp                                          // *
-                     { 
-                        rules << "WriteStmt -> WRITE Exp \n";
-                        code << ".> " << *$2 << "\n";
-                     }
-                  |  WriteStmt ',' Exp                   // left recursion *
-                     { 
-                        rules << "WriteStmt -> WriteStmt ',' Exp \n";
-                        code << ".> " << *$3 << "\n";
-                     }
-                  ;
-
-Stmt:             IDENT ASMT Exp    // The desination can be either scalar *
-                     { 
-                        rules << "Stmt -> IDENT ASMT Exp\n";
-                        code << "= " << *$1 << ", " << *$3 << "\n";
-		               }
-                  |  IDENT '[' Exp ']' ASMT Exp             // or subscripted *
-		               { 
-                        rules << "Stmt -> IDENT '[' Exp ']' ASMT Exp\n";
-                        code << "[]= " << *$1 << ", " << *$3 << ", " << *$6 << "\n";
-		               }
-                  |  ReadStmt                                 // See above *
-		               { 
-                        rules << "Stmt -> ReadStmt" ; 
-                     }                  // *
-                  |  WriteStmt                                // see above *
-		               { 
-                        rules << "Stmt -> WriteStmt" ; 
-                     }                 // *
-                  |  IF BoolExp THEN StmtList ELSE StmtList ENDIF    // outline
-		               { 
-                        rules << "Stmt -> IF BoolExp THEN StmtList ELSE StmtList ENDIF\n";
-                        code << "?:= THEN, BoolExp \n"        // if BoolExp goto THEN
-		                  << ":= ELSE \n"                  // goto ELSE
-                        << ":THEN \n"                    // THEN:
-                        << "..."                         // dump StmtList
-                        << ":= ENDIF \n"                 // goto ENDIF
-                        << ":ELSE \n"                    // ELSE: 
-			               << "..."                         // StmtList 
-			               << ":ENDIF \n"                   // ENDIF:
-		               }
-                  |  IF BoolExp THEN StmtList ENDIF                  // outline
-                     { 
-                        rules << "Stmt -> IF BoolExp THEN StmtList ENDIF\n";
-                        code << "?:= THEN, BoolExp \n"        // if BoolExp goto THEN
-		                  << ":= ELSE \n"                  // goto ELSE
-                        << ":THEN \n"                    // THEN:
-                        << "..."                         // StmtList
-                        << ":ELSE \n"                    // ELSE: 
-		               }  
-                  |  WHILE BoolExp BEGINLOOP StmtList ENDLOOP        // outline
-		               { 
-                        rules << "Stmt -> WHILE BoolExp BEGINLOOP StmtList ENDLOOP\n"; 
-                        code << ": WHILE \n"                  // WHILE:
-			               << "?:= BEGINLOOP, BoolExp \n"
-			                           // if boolExp goto BEGINLOOP
-                        << ":= EXIT \n"        // otherwise, goto EXIT
-			               << ": BEGINLOOP \n"              // BEGINLOOP:
-			               << "..."                         // StmtList
-			               << ":= WHILE \n"                 // goto WHILE
-			               << ": EXIT \n"                   // EXIT:
-		               }
-                  |  DO BEGINLOOP StmtList ENDLOOP WHILE BoolExp // outline
-		               { 
-                        rules << "Stmt -> DO BEGINLOOP StmtList ENDLOOP "
-		                  << "WHILE BoolExp\n";           
-                        code  << ": DO BEGINLOOP \n"          // BEGINLOOP:
-                        << "..."                        // StmtList
-			               << "?:=  << BEGINLOOP <<,  << BoolExp \n"
-			               // if BoolExp goto BEGINLOOP
-		               }
-                  |  CONTINUE                                // outline
-		               { 
-                        rules << "Stmt -> CONTINUE\n";
-                        code  << ":= BEGINLOOP\n"
-		               }
-                  |  RETURN Exp                                        // ???
-		               { 
-                        rules << "Stmt -> RETURN Exp\n";               
-		               }
-                  ;
 
 %%
-/* Additional C Code */
+
+prog_start:
+	function_loop
+	;
+
+function_loop:
+	/*EPSILON*/
+	| function function_loop
+	;
+
+function:
+	FUNCTION IDENT {functions.push_back(string("func ") + $2);} SEMICOLON BEGIN_PARAMS {addParam = true;} declaration_loop END_PARAMS {addParam = false;} BEGIN_LOCALS declaration_loop END_LOCALS BEGIN_BODY statement_loop END_BODY {
+		cout << functions[0] << endl;
+		// Prints Variables
+		for(unsigned i = 0; i < symbols.size(); i++) {
+			if(symbolTypes[i] == "INT") {
+	
+				cout << ". " << symbols[i] << endl;
+			}
+			else {
+				cout << ".[] " << symbols[i] << ", " << symbolTypes[i] << endl;
+			}
+		}
+		
+		// Prints Statements
+		for(unsigned i = 0; i < statements.size(); i++) {
+			cout << statements[i] << endl;
+		}
+		symbols.clear();
+		symbolTypes.clear();
+		statements.clear();
+		parameters.clear();
+		cout << "endfunc" << endl;
+	}
+	;
+
+declaration_loop:
+	/*EPSILON*/
+	| declaration SEMICOLON declaration_loop
+	;
+
+declaration:
+	id_loop COLON storing
+	;
+
+id_loop:
+	IDENT {
+		symbols.push_back(string(" ") + $1);
+		// if(addParam) {
+		// 	parameters.push_back(string(" ") + $1);
+		// }
+	}
+	| IDENT COMMA id_loop {
+		symbols.push_back(string(" ") + $1);
+		symbolTypes.push_back("INT");
+	}
+	;
+
+storing:
+	INTEGER { 
+		symbolTypes.push_back("INT");
+	}
+	| ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
+		symbolTypes.push_back(to_string($3));
+	}
+	;
+ 
+statement_loop:
+	/*EPSILON*/
+	| statement SEMICOLON statement_loop
+	;
+
+statement:
+	var ASSIGN expression {
+		statements.push_back("= " + crossGrammar.back().substr(0,crossGrammar.back().length()-1));
+		crossGrammar.pop_back();
+	}
+	| IF bool_expr THEN statement_loop ENDIF {
+		labelNumber++;
+		string ifTrue = "IF_TRUE_LABEL_" + to_string(labelNumber);
+		string endIf = "END_IF_LABEL" + to_string(labelNumber);
+		statements.push_back("?:= " + ifTrue + ", " + operand.back());
+		operand.pop_back();
+		statements.push_back(": " + endIf);
+
+	}
+	| IF bool_expr THEN statement_loop ELSE statement_loop ENDIF {
+		string ifTrue = "IF_TRUE_LABEL_" + to_string(labelNumber);
+		string ifElse = "IF_ELSE_LABEL_" + to_string(labelNumber);
+		string endIf = "END_IF_LABEL_" + to_string(labelNumber);
+		statements.push_back("?:= " + ifTrue + ", " + operand.back());
+		operand.pop_back();
+		statements.push_back(":= " + ifElse); //goto ifFalse statement
+		statements.push_back(": " + endIf);
+
+	}
+	| WHILE bool_expr BEGINLOOP statement_loop ENDLOOP {
+		labelNumber++;
+		string whileLabel = "WHILE_LOOP_" + to_string(labelNumber);
+		statements.push_back(whileLabel);
+
+	}
+	| DO BEGINLOOP statement_loop ENDLOOP WHILE bool_expr {
+		labelNumber++;
+		string whileLabel = "DO_WHILE_LOOP_" + to_string(labelNumber);
+		statements.push_back(whileLabel);
+	}
+	| FOREACH IDENT IN IDENT BEGINLOOP statement_loop ENDLOOP
+	| READ var var_loop {
+		statements.push_back(".< " + crossGrammar.back());
+		crossGrammar.pop_back();
+	}
+	| WRITE var var_loop {
+		statements.push_back(".> " + crossGrammar.back());
+		crossGrammar.pop_back();
+	}
+	| CONTINUE
+	| RETURN expression
+	;
+
+var_loop:
+	/*EPSILON*/
+	| COMMA var var_loop {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+	}
+	;
+
+bool_expr:
+	relation_and_expr
+	| bool_expr OR relation_and_expr {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("|| " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	;
+
+relation_and_expr:
+	relation_expr1
+	| relation_and_expr AND relation_expr1 {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("&& " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	;
+
+relation_expr1:
+	relation_expr2
+	| NOT relation_expr2 {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		statements.push_back("! " + tempVar + ", " + operand.back());
+		operand.pop_back();
+		operand.push_back(tempVar);
+	}
+	;
+
+relation_expr2:
+	expression comp expression
+	| TRUE {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		statements.push_back("= " + tempVar + ", 1");
+		operand.push_back(tempVar);
+	}
+	| FALSE {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		statements.push_back("= " + tempVar + ", 0");
+		operand.push_back(tempVar);
+	}
+	| L_PAREN bool_expr R_PAREN
+	;
+
+comp:
+	EQ {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("== " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| NEQ {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("!= " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| LT {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("< " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| GT {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("> " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| LTE {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("<= " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| GTE {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back(">= " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	;
+
+expression:
+	multiplicative_expr expression_loop
+	;
+
+expression_loop:
+	/*EPSILON*/
+	| ADD multiplicative_expr expression_loop {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("+ " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| SUB multiplicative_expr expression_loop {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("- " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	;
+
+multiplicative_expr:
+	term1 multiplicative_expr_loop
+	;
+
+multiplicative_expr_loop:
+	/*EPSILON*/
+	| MULT term1 multiplicative_expr_loop {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("* " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| DIV term1 multiplicative_expr_loop {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("/ " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	| MOD term1 multiplicative_expr_loop {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		string operand1 = operand.back();
+		operand.pop_back();
+		string operand2 = operand.back();
+		operand.pop_back();
+
+		statements.push_back("% " + tempVar + ", " + operand1 + ", " + operand2);
+		operand.push_back(tempVar);
+	}
+	;
+
+term1:
+	term2
+	| SUB term2
+	| IDENT L_PAREN R_PAREN
+	| IDENT L_PAREN expr_comma_loop R_PAREN
+	;
+
+term2:
+	var
+	| NUMBER {
+		varNumber++;
+		string tempVar = "reg" + to_string(varNumber);
+		symbols.push_back(tempVar);
+		symbolTypes.push_back("INT");
+
+		statements.push_back("= " + tempVar + ", " + to_string($1));
+		operand.push_back(tempVar);
+	}
+	| L_PAREN expression R_PAREN
+	;
+
+expr_comma_loop:
+	expression
+	| expression COMMA expr_comma_loop
+	;
+
+var:
+	IDENT {
+		string temp = $1;
+		crossGrammar.push_back(temp);
+		operand.push_back(temp);
+	}
+	| IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+		varNumber++;
+		string regNumber = "regArray" + to_string(varNumber);
+		symbols.push_back(regNumber);
+		symbolTypes.push_back("INT");
+		statements.push_back(".< " + regNumber);
+		statements.push_back(string("[]= ") + $1 + "," + to_string(varNumber));
+		operand.push_back(string("[] ") + $1 + operand.back());
+	}
+	;
+
+%%
+
 int main(int argc, char **argv) {
-   //yylex();
    if (argc > 1) {
       yyin = fopen(argv[1], "r");
       if (yyin == NULL){
