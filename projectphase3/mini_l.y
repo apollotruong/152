@@ -1,5 +1,5 @@
 /* CS152 Project Phase 2 */
-/* Apollo Truong, SIDENTney Son */
+/* Apollo Truong, Sidney Son */
 
 /* A parser for the mini-L language using Bison */
 
@@ -8,430 +8,209 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>	
-#include <ostream>
-#include <iostream>
-#include <fstream>
-#include <cstdlib>
+#include <vector>
+#include <string.h>
 
 void yyerror(const char *msg);
-int vectorSize;
-string prefix;
-string suffix;
-
-extern int reductionCt;
-extern int listCt;
-extern ostringstream rules;
-extern ostringstream decs;
-extern ostringstream code;
-extern ostringstream init;
-
-
 extern int currLine;
 extern int currPosition;
-
-
 FILE * yyin;
 extern int yylex();
-
-struct expression_semval {
-	std::string code;
-	std::string result_IDENT; // aka 'place'
-};
-
+vector<string> funcs;
+vector<string> decs;
+vector<string> decType;
+vector<string> states;
+vector<string> temps;
+int tempCount = 0;
+int labelCount = 0;
 %}
 /* Bison Declarations */
-
 %union {
-   int junk;
-   char* ident; // needed for name of IDENTentifier
+   string ident; // needed for name of identifier
    int val;     // needed for value of number
 }
-
 // Start Symbol
 %start prog_start
-
-%type <code>   Program
-%type <code>   Decl
-%type <code>   statements
-%type <code>   StmtList
-%type <code>   ExpList
-%type <code>   FunctionDecl
-%type <code>   BoolExp
-%type <code>   BoolExp
-%type <ident>  Exp
-%type <code>   Stmt
-%type <code>   ReadStmt
-%type <code>   WriteStmt
-
 // Reserved Words
-%token      <junk> 	LO
-%left       <junk> 	FUNCTION 
-%token      <junk> 	BEGIN_PARAMS 
-%token      <junk> 	END_PARAMS 
-%token      <junk> 	BEGIN_LOCALS 
-%token      <junk> 	END_LOCALS 
-%token      <junk> 	BEGIN_BODY 
-%token      <junk> 	END_BODY
-%token      <junk> 	ARRAY
-%token      <junk> 	OF
-%token      <junk> 	ASSIGN
-%token      <junk> 	IF
-%token      <junk> 	THEN
-%token      <junk> 	ENDIF
-%token      <junk> 	ELSE
-%token		<junk<	ELSEIF
-%token      <junk> 	WHILE
-%token      <junk> 	BEGINLOOP
-%token      <junk> 	ENDLOOP
-%token      <junk> 	DO
-%token      <junk> 	READ
-%token      <junk> 	WRITE
-%token      <junk> 	CONTINUE
-%token      <junk> 	RETURN
-%token		<junk>	INTEGER
-%token      <junk> 	INTEGER
-%token      <val> 	NUMBER
-%token      <junk> 	IDENT
-%token      <junk> 	TRUE
-%token      <junk> 	FALSE
-%token      <junk> 	ASMT
-%left     			OR
-%left     			AND
-%right    			NOT
-%nonassoc 			NE EQ LE GE LTE GTE
-%left     			ADD SUB
-%left			 	MULT DIV MOD
-%left     			SEMICOLON
-%left     			COLON
-%left     			COMMA
-%left     			R_PAREN
-%left     			L_PAREN
-%left     			R_SQUARE_BRACKET
-%left     			L_SQUARE_BRACKET
-
-
-
-
-
-
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
+// Arithmetic Operators
+%left SUB ADD MULT DIV MOD
+// Comparison Operators
+%left EQ NEQ LT GT LTE GTE
+// Other Special Symbols
+%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
+// Identifiers and Numbers
+%token <val> NUMBER
+%token <ident> IDENT
 
 /* Grammar Rules */
 %%
-Program:          /* EMPTY */    
-                     { 
-                        rules << "Program -> /* EMPTY */ \n"; 
-                     }
-                  |  Program FunctionDecl       
-                     { 
-                        rules << "Program -> ProgramFunctionDecl \n"; 
-                     }
-                  ;   
+prog_start:    functions 
+               ;
 
-StmtList:         Stmt SEMICOLON          // nonempty, semicolon terminated. *
-                     { 
-                        rules << "StmtList -> Stmt \n"; 
-                     }
-                  |  StmtList Stmt SEMICOLON
-                     { 
-                        rules << "StmtList -> StmtList Stmt SEMICOLON \n"; 
-                     }  
-                   ;
+functions:     
+               |   function functions 
+               ;
+function:      FUNCTION IDENT {funcs.push_back("func " + $2);}
+               SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY 
+               { 
+                  for(unsigned i = 0; i < funcs.size(); i++){
+                     // Print function name
+                     cout << funcs[0] << endl;
 
-ExpList:          /* EMPTY */      // possibly empty, comma separated. *
-                     { 
-                        rules << "ExpList -> /* EMPTY */ \n"; 
-                     }                       
-                  |  ExpList COMMA Exp        
-                     { 
-                        rules << "ExpList -> Explist COMMA Exp \n"; 
-                     }     
-                  ;
+                     // Print declarations
+                     for(unsigned j = 0; j < decs.size(); j++){
+                        if(decType[j] == "INT"){
+                           cout << ". " << decs[i] << endl;
+                        }else {
+                           cout << ".[] " << decs[i] << ", " << decType[i] << endl;
+                        }
+                     }
 
-FunctionDecl:     FUNCTION IDENT SEMICOLON BEGINPARAMS DeclList  ENDPARAMS       
-                  BEGINLOCALS DeclList  ENDLOCALS
-                  BEGINBODY   StmtList  ENDBODY
-                     {  
-                        rules << "FunctionDecl -> FUNCTION IDENT SEMICOLON \n";
-                        rules << "   BEGINPARAMS DeclList  ENDPARAMS \n"; // scalars
-                        rules << "   BEGINLOCALS DeclList  ENDLOCALS \n";
-                        rules << "   BEGINBODY   StmtList  ENDBODY \n";
-                                                // for code, must expand lists
-                        code << "func " << *($1) << "\n";
+                     // Print statements
+                     for(unsigned k = 0; k < statements.size(); k++){
+                        cout << statements[i] << endl;
                      }
-                  ;
+                     cout << "endfunc" << endl;
+                  }
+               }
+               ;
 
-Decl:             IDENT COLON INTEGER                      // A scalar variable *
-                     { 
-                        rules << "Decl -> IDENT ':' INTEGER \n"; 
-                        code << ". " << *($1) << "\n";
-                     }
-                  |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER   // A vector var *
-                     { 
-                        rules << "Decl -> IDENT ':' ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER \n"; 
-                        vectorSize = $5; 
-                        code  << ".[] " << *($1) << ", " << vectorSize << "\n";
-	                  }
-                  |  IDENT COMMA Decl                           // right recursion *
-    		            { 
-                        rules << "VectorDec. ->  IDENT COMMA VectorDecl \n"; 
-                        code  << ".[] " << *($1) << ", " << vectorSize << "\n";
-		               }
-                  ; // vectorSize is global declared at the top of main.cc
+declarations:  
+               |   declarations declaration SEMICOLON 
+               ;
 
-DeclList:         /* EMPTY */   // possibly empty, semicolon terminated.
-                     { 
-                        rules << "DeclList -> EMPTY\n"; 
-                     } 
-                  |  DeclList Decl SEMICOLON                      // left recursion *
-                     {
-                        rules << "DeclList -> DeclList Decl SEMICOLON \n"; 
-                     }
-                  ;
+declaration:   identifiers COLON INTEGER 
+               {
+                  decType.push_back("INT");
+               }
+               |   identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER 
+               { 
+                  decType.push_back(to_string($5));
+               }
+               ;
 
-BoolExp:          TRUE                   
-                     { 
-                        rules << " TRUE \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 	
-                        code << "= " << $$ << ", " << 1 << "\n";     
-	                  }
-                  |  FALSE                  
-                     { 
-                        rules << " FALSE \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "= " << $$ << ", " << 0 << "\n";     
-		               }                    
-                  |  L_PAREN BoolExp R_PAREN
-                     { 
-                        rules << " L_PAREN BoolExp R_PAREN \n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "= " << *$$ << ", " << *$2 << "\n";
-                     }     
-                  |  NOT BoolExp
-                     {
-                        rules << " NOT BoolExp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "! " << *$$ << ", " << *$2 << "\n";
-                     }
-                  |  BoolExp AND BoolExp    
-                     { 
-                        rules << " BoolExp AND BoolExp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "&& " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-		               }
-                  |  BoolExp OR BoolExp     
-                     { 
-                        rules << " BoolExp OR BoolExp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "|| " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-		               }
-                  |  Exp EQ Exp           
-                     { 
-                        rules << " Exp EQ Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 	
-                        code << "== " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-	                  }
-                  |  Exp NE Exp           
-                     { 
-                        rules << " Exp NE Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "!= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp GE Exp           
-                     { 
-                        rules << " Exp GE Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << ">= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp LE Exp           
-                     { 
-                        rules << " Exp LE Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "<= " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp GT Exp           
-                     { 
-                        rules << " Exp GT Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "> " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  |  Exp LT Exp           
-                     { 
-                        rules << " Exp LT Exp \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                        code << "< " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-		               }
-                  ;
+identifiers:   IDENT 
+               { 
+                  decs.push_back(" " + $1);
+               }
+               |   IDENT COMMA identifiers 
+               {
+                  decs.push_back(" " + $1);
+                  decs.push_back("INT");
+               }
+               ;
 
-Exp:              IDENT                                 // scalar variable *
-                     { rules << "Exp -> IDENT\n";
-                       $$ = new string("_T" + itoa(reductionCt++)); 
-                       code << "= " << *$$ << ", " << *$1 << "\n";
-		               }
-                  |  IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET       //  vector/subscripted variable *  
-                     { 
-                        rules << "Exp -> IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET \n"; 
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "=[] " << *$$ << ", " << *$1 << ", " << *$3 << "\n"; 
-                     }
-                  |  Exp ADD Exp	    
-                     { 
-                        rules << "Exp -> Exp ADD Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "+ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp SUB Exp	    
-                     { 
-                        rules << "Exp -> Exp SUB Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "- " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp MULT Exp	    
-                     { 
-                        rules << "Exp -> Exp MULT Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "* " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp DIV Exp	    
-                     { 
-                        rules << "Exp -> Exp DIV Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "/ " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  Exp MOD Exp	    
-                     { 
-                        rules << "Exp -> Exp MOD Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "% " << *$$ << ", " << *$1 << ", " << *$3 << "\n";
-                     }
-                  |  SUB Exp  %prec L_PAREN     
-                     { 
-                        rules << "Exp -> SUB Exp\n";
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        code << "- " << *$$ << ", " << 0 << ", " << *$2 << "\n";
-                     }
-                  |  NUMBER                 
-                     { 
-                        $$ = new string("_T" + itoa(reductionCt++));
-                        rules << "Exp -> NUMBER\n";
-                        code << "= " << *$$ << ", " << $1 << "\n";
-                     }
-                  |  L_PAREN Exp R_PAREN             
-                     { 
-                        rules << "Exp -> L_PAREN Exp R_PAREN \n";
-                        $$ = new string("_T" + itoa(reductionCt++));  
-                        code << "= " << *$$ << ", " << *$2 << "\n";
-                     }
-                  |  IDENT L_PAREN ExpList R_PAREN      // function call         // ???
-                     { 
-                        rules << "Exp -> IDENT L_PAREN Exp R_PAREN \n";
-                        $$ = new string("_T" + itoa(reductionCt++)); 
-                     }
-	               ;
+statements:    
+               |   statement SEMICOLON statements 
+               ;
 
-ReadStmt:         READ IDENT                                            // *
-                     { 
-                        rules << "ReadStmt -> Read IDENT \n";
-                        code  << ".< " << *$2 << "\n";
-		               }
-                  |  READ IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET                                
-                     { 
-                        rules << "ReadStmt -> READ IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET \n";
-                        code  << ".[]< " << *$2 << ", " << *$4 << "\n";
-                     }
-                  |  ReadStmt COMMA IDENT                     // left recursion *
-		               { 
-                        rules << "ReadStmt -> ReadStmt COMMA IDENT \n";
-                        code  << ".< " << *$3 << "\n";
-                     }
-                  |  ReadStmt COMMA IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET         // left recursion *
-		               { 
-                        rules << "ReadStmt -> ReadStmt COMMA IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET\n"; 
-                        code  << ".[]< " << *$3 << ", " << $5 << "\n";
-                     }
-                  ;
+statement:     var ASSIGN expr 
+               {
+                  statements.push_back("= " + temps.back());
+                  temps.pop_back();
+               }
+               |   IF bool-expr THEN statements ENDIF 
+               {
 
-WriteStmt:        WRITE Exp                                          // *
-                     { 
-                        rules << "WriteStmt -> WRITE Exp \n";
-                        code << ".> " << *$2 << "\n";
-                     }
-                  |  WriteStmt COMMA Exp                   // left recursion *
-                     { 
-                        rules << "WriteStmt -> WriteStmt COMMA Exp \n";
-                        code << ".> " << *$3 << "\n";
-                     }
-                  ;
+               }
+               |   IF bool-expr THEN statements ELSE statements ENDIF { /*printf("statement -> IF bool-expr THEN statements ELSE statements ENDIF\n");*/}
+               |   WHILE bool-expr BEGINLOOP statements ENDLOOP { /*printf("statement -> WHILE bool-expr BEGINLOOP statements ENDLOOP\n");*/}
+               |   DO BEGINLOOP statements ENDLOOP WHILE bool-expr { /*printf("statement -> DO BEGINLOOP statements ENDLOOP WHILE bool-expr\n");*/}
+               |   READ vars 
+               {
+                  statements.push_back(".< " + temps.back());
+                  temps.pop_back();
+               }
+               |   WRITE vars 
+               {
+                  statements.push_back(".> " + temps.back());
+                  temps.pop_back();
+               }
+               |   CONTINUE
+               |   RETURN expr 
+               ;
 
-Stmt:             IDENT ASMT Exp    // The desination can be either scalar *
-                     { 
-                        rules << "Stmt -> IDENT ASMT Exp\n";
-                        code << "= " << *$1 << ", " << *$3 << "\n";
-		               }
-                  |  IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET ASMT Exp             // or subscripted *
-		               { 
-                        rules << "Stmt -> IDENT L_SQUARE_BRACKET Exp R_SQUARE_BRACKET ASMT Exp\n";
-                        code << "[]= " << *$1 << ", " << *$3 << ", " << *$6 << "\n";
-		               }
-                  |  ReadStmt                                 // See above *
-		               { 
-                        rules << "Stmt -> ReadStmt" ; 
-                     }                  // *
-                  |  WriteStmt                                // see above *
-		               { 
-                        rules << "Stmt -> WriteStmt" ; 
-                     }                 // *
-                  |  IF BoolExp THEN StmtList ELSE StmtList ENDIF    // outline
-		               { 
-                        rules << "Stmt -> IF BoolExp THEN StmtList ELSE StmtList ENDIF\n";
-                        code << "?:= THEN, BoolExp \n"        // if BoolExp goto THEN
-		                  << ":= ELSE \n"                  // goto ELSE
-                        << ":THEN \n"                    // THEN:
-                        << "..."                         // dump StmtList
-                        << ":= ENDIF \n"                 // goto ENDIF
-                        << ":ELSE \n"                    // ELSE: 
-			               << "..."                         // StmtList 
-			               << ":ENDIF \n"                   // ENDIF:
-		               }
-                  |  IF BoolExp THEN StmtList ENDIF                  // outline
-                     { 
-                        rules << "Stmt -> IF BoolExp THEN StmtList ENDIF\n";
-                        code << "?:= THEN, BoolExp \n"        // if BoolExp goto THEN
-		                  << ":= ELSE \n"                  // goto ELSE
-                        << ":THEN \n"                    // THEN:
-                        << "..."                         // StmtList
-                        << ":ELSE \n"                    // ELSE: 
-		               }  
-                  |  WHILE BoolExp BEGINLOOP StmtList ENDLOOP        // outline
-		               { 
-                        rules << "Stmt -> WHILE BoolExp BEGINLOOP StmtList ENDLOOP\n"; 
-                        code << ": WHILE \n"                  // WHILE:
-			               << "?:= BEGINLOOP, BoolExp \n"
-			                           // if boolExp goto BEGINLOOP
-                        << ":= EXIT \n"        // otherwise, goto EXIT
-			               << ": BEGINLOOP \n"              // BEGINLOOP:
-			               << "..."                         // StmtList
-			               << ":= WHILE \n"                 // goto WHILE
-			               << ": EXIT \n"                   // EXIT:
-		               }
-                  |  DO BEGINLOOP StmtList ENDLOOP WHILE BoolExp // outline
-		               { 
-                        rules << "Stmt -> DO BEGINLOOP StmtList ENDLOOP "
-		                  << "WHILE BoolExp\n";           
-                        code  << ": DO BEGINLOOP \n"          // BEGINLOOP:
-                        << "..."                        // StmtList
-			               << "?:=  << BEGINLOOP <<,  << BoolExp \n"
-			               // if BoolExp goto BEGINLOOP
-		               }
-                  |  CONTINUE                                // outline
-		               { 
-                        rules << "Stmt -> CONTINUE\n";
-                        code  << ":= BEGINLOOP\n"
-		               }
-                  |  RETURN Exp                                        // ???
-		               { 
-                        rules << "Stmt -> RETURN Exp\n";               
-		               }
-                  ;
+bool-expr:     rel-and-exprs { /*printf("bool-expr -> rel-and-exprs\n");*/}
+               ;
+
+rel-and-exprs:	rel-and-expr { /*printf("rel-and-exprs -> rel-and-expr\n");*/}
+		         |	rel-and-expr OR rel-and-exprs { /*printf("rel-and-exprs -> rel-and-expr OR rel-and-exprs\n");*/}
+		         ;
+
+rel-and-expr:  rel-exprs { /*printf("rel-and-expr -> rel-exprs\n");*/}
+               ;
+
+rel-exprs:  	rel-expr { /*printf("rel-exprs -> rel-expr\n");*/}
+		         |   rel-expr AND rel-exprs { /*printf("rel-and-exprs -> rel-expr AND rel-exprs\n");*/}
+		         ;
+
+rel-expr:      NOT expr comp expr { /*printf("rel-expr -> NOT expr comp expr\n");*/}
+               |   NOT TRUE { /*printf("rel-expr -> NOT TRUE\n");*/}
+               |   NOT FALSE { /*printf("rel-expr -> NOT FALSE\n");*/}
+               |   NOT L_PAREN bool-expr R_PAREN { /*printf("rel-expr -> NOT L_PAREN bool-expr R_PAREN\n");*/}
+               |   expr comp expr { /*printf("rel-expr -> expr comp expr\n");*/}
+               |   TRUE { /*printf("rel-expr -> TRUE\n");*/}
+               |   FALSE { /*printf("rel-expr -> FALSE\n");*/}
+               |   L_PAREN bool-expr R_PAREN { /*printf("rel-expr -> L_PAREN bool-expr R_PAREN\n");*/}
+               ;
+
+comp:          EQ { /*printf("comp -> EQ\n");*/}
+               |   NEQ { /*printf("comp -> NEQ\n");*/}
+               |   LT { /*printf("comp -> LT\n");*/}
+               |   GT { /*printf("comp -> GT\n");*/}
+               |   LTE { /*printf("comp -> LTE\n");*/}
+               |   GTE { /*printf("comp -> GTE\n");*/}
+               ;
+
+exprs:         expr { /*printf("exprs -> expr\n");*/}
+               |   expr COMMA exprs { /*printf("exprs -> expr COMMA exprs\n");*/}
+               ;
+
+expr:           mult-expr expr-loop { /*printf("expr -> mult-expr expr-loop\n");*/}
+		         ; 	
+                
+expr-loop:	   { /*printf("expr-loop -> epsilon \n");*/}
+               |   ADD mult-expr expr-loop { /*printf("expr-loop -> ADD mult-expr expr-loop \n");*/}
+               |   SUB mult-expr expr-loop { /*printf("expr-loop -> SUB mult-expr expr-loop \n");*/}
+               ;
+
+mult-expr:      term mult-expr-loop { /*printf("mult-expr -> term mult-expr-loop \n");*/}
+		         ;
+
+mult-expr-loop:	{ /*printf("mult-expr-loop -> epsilon\n");*/}
+		         |   MULT term mult-expr-loop { /*printf("mult-expr -> MULT term mult-expr-loop \n");*/}
+               |   DIV term mult-expr-loop { /*printf("mult-expr -> DIV term mult-expr-loop\n");*/}
+               |   MOD term mult-expr-loop { /*printf("mult-expr -> MOD term mult-expr-loop \n");*/}
+               ;
+
+term:          SUB var { /*printf("term -> SUB var\n");*/}
+               |   SUB number { /*printf("term -> SUB number\n");*/}
+               |   SUB L_PAREN expr R_PAREN { /*printf("term -> SUB L_PAREN expr R_PAREN\n");*/}
+               |   SUB ident L_PAREN exprs R_PAREN { /*printf("term -> SUB ident L_PAREN exprs R_PAREN\n");*/}
+               |   var { /*printf("term -> var\n");*/}
+               |   number { /*printf("term -> number\n");*/}
+               |   L_PAREN expr R_PAREN { /*printf("term -> L_PAREN expr R_PAREN\n");*/}
+               |   ident L_PAREN exprs R_PAREN { /*printf("term -> ident L_PAREN exprs R_PAREN\n");*/}
+               ;
+
+number:        NUMBER { /*printf("number -> NUMBER %d\n", $1);*/}
+               ;
+
+vars:          var { /*printf("vars -> var\n");*/}
+               |   var COMMA vars { /*printf("vars -> var COMMA vars\n");*/}
+               ;
+
+var:           IDENT
+               {
+                  string temp = $1;
+                  temps.push_back(temp);
+               }
+               | IDENT L_SQUARE_BRACKET expr R_SQUARE_BRACKET 
+               {
+                  
+               }
+               ;
 
 %%
 /* Additional C Code */
