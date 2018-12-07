@@ -23,11 +23,8 @@
     vector<string> symbolTypes;
     vector<string> statements;
     vector<string> cross;
-
-    vector<string> ifStatements; //
-
-    vector<string> param_;
-	stringstream milhouse;
+    string newTemp();
+    string newLabel();
 
     bool addParam = false;
     int labelCount = 0;
@@ -120,18 +117,17 @@ statement:		var ASSIGN expression {
         			cross.pop_back();
     			}
     			| IF bool_expr THEN statement_loop ENDIF {
-        			labelCount++;
-        			string label1 = "label1" + to_string(labelCount);
-        			string label2 = "lable2" + to_string(labelCount);
+        			string label1 = newLabel();
+        			string label2 = newLabel();
         			statements.push_back("?:= " + label1 + ", " + operand.back());
         			operand.pop_back();
         			statements.push_back(": " + label2);
 
     			}
     			| IF bool_expr THEN statement_loop ELSE statement_loop ENDIF {
-        			string label1 = "label1" + to_string(labelCount);
-        			string label2 = "label2" + to_string(labelCount);
-        			string label3 = "label3" + to_string(labelCount);
+        			string label1 = newLabel();
+        			string label2 = newLabel();
+        			string label3 = newLabel();
         			statements.push_back("?:= " + label1 + ", " + operand.back());
         			operand.pop_back();
         			statements.push_back(":= " + label2); //goto ifFalse statement
@@ -139,14 +135,12 @@ statement:		var ASSIGN expression {
 
     			}
     			| WHILE bool_expr BEGINLOOP statement_loop ENDLOOP {
-        			labelCount++;
-        			string label = "label" + to_string(labelCount);
+        			string label = newLabel();
         			statements.push_back(label);
 
     			}
     			| DO BEGINLOOP statement_loop ENDLOOP WHILE bool_expr {
-        			labelCount++;
-        			string label = "label" + to_string(labelCount);
+        			string label = newLabel();
         			statements.push_back(label);
     			}
     			| READ var var_loop {
@@ -163,8 +157,7 @@ statement:		var ASSIGN expression {
 
 var_loop:
 				| COMMA var var_loop {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
     			}
@@ -172,8 +165,7 @@ var_loop:
 
 bool_expr:		relation_and_expr
     			| bool_expr OR relation_and_expr {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
         			
@@ -189,8 +181,7 @@ bool_expr:		relation_and_expr
 
 relation_and_expr:relation_expr1
     			| relation_and_expr AND relation_expr1 {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -206,8 +197,7 @@ relation_and_expr:relation_expr1
 
 relation_expr1:	relation_expr2
     			| NOT relation_expr2 {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
        				symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -219,8 +209,7 @@ relation_expr1:	relation_expr2
 
 relation_expr2:	expression comp expression
     			| TRUE {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -228,8 +217,7 @@ relation_expr2:	expression comp expression
         			operand.push_back(t);
    				}
     			| FALSE {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -240,8 +228,7 @@ relation_expr2:	expression comp expression
     			;
 
 comp:			EQ {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -254,8 +241,7 @@ comp:			EQ {
         			operand.push_back(t);
     			}
     			| NEQ {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -268,8 +254,7 @@ comp:			EQ {
         			operand.push_back(t);
    				}
     			| LT {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -282,8 +267,7 @@ comp:			EQ {
         			operand.push_back(t);
     			}
     			| GT {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -296,8 +280,7 @@ comp:			EQ {
         			operand.push_back(t);
     			}
     			| LTE {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -310,8 +293,7 @@ comp:			EQ {
         			operand.push_back(t);
     			}
     			| GTE {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -330,8 +312,7 @@ expression:		multiplicative_expr expression_loop
 
 expression_loop:
 			   | ADD multiplicative_expr expression_loop {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -344,8 +325,7 @@ expression_loop:
         			operand.push_back(t);
     			}
     			| SUB multiplicative_expr expression_loop {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -364,8 +344,7 @@ multiplicative_expr: term1 multiplicative_expr_loop
 
 multiplicative_expr_loop:
 				| MULT term1 multiplicative_expr_loop {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -378,8 +357,7 @@ multiplicative_expr_loop:
         			operand.push_back(t);
     			}
     			| DIV term1 multiplicative_expr_loop {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -392,8 +370,7 @@ multiplicative_expr_loop:
         			operand.push_back(t);
     			}
     			| MOD term1 multiplicative_expr_loop {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -415,8 +392,7 @@ term1:			term2
 
 term2:     		var
     			| NUMBER {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
@@ -436,8 +412,7 @@ var:			IDENT {
         		operand.push_back(temp);
     			}
     			| IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
-        			tempCount++;
-        			string t = "t" + to_string(tempCount);
+        			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
         			statements.push_back(".< " + t);
@@ -464,3 +439,14 @@ void yyerror(const char *msg) {
 
 }
 
+string newTemp(){
+   tempCount++;
+   string t = "t" + to_string(tempCount);
+   return t;
+}
+
+string newLabel(){
+   labelCount++;
+   string l = "l" + to_string(labelCount);
+   return l;
+}
