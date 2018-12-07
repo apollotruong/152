@@ -7,7 +7,6 @@
     #include <string>
     #include <sstream>
     #include <iostream>
-	#include <stack>
     using namespace std;
 
     int yylex(void);
@@ -17,7 +16,6 @@
     extern FILE * yyin;
 
     vector<string> func;
-    vector<string> param;
     vector<string> operand;
     vector<string> symbols;
     vector<string> symbolTypes;
@@ -26,7 +24,6 @@
     string newTemp();
     string newLabel();
 
-    bool addParam = false;
     int labelCount = 0;
     int tempCount = 0;
 
@@ -78,8 +75,7 @@ function:		FUNCTION IDENT {func.push_back(string("func ") + $2);} SEMICOLON BEGI
         		}
         		symbols.clear();
         		symbolTypes.clear();
-       			statements.clear();
-        		param.clear();
+       		statements.clear();
         		cout << "endfunc" << endl;
     			}
     			;
@@ -408,7 +404,6 @@ expr_comma_loop:	expression
 
 var:			IDENT {
         		string temp = $1;
-        		cross.push_back(temp);
         		operand.push_back(temp);
     			}
     			| IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
