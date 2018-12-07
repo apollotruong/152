@@ -1,239 +1,467 @@
-/* CS152 Project Phase 2 */
-/* Apollo Truong, Sidney Son */
 
-/* A parser for the mini-L language using Bison */
-
-
-/* C Declarations */
 %{
-#include <stdio.h>
-#include <stdlib.h>	
-#include <vector>
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <cstdlib>
-// #include "semVal.h"
+	#include <string.h>
+	#include <stdio.h>
+	#include <stdlib.h>
+    #include <vector>
+    #include <string>
+    #include <sstream>
+    #include <iostream>
+	#include <stack>
+    using namespace std;
 
-using namespace std;
-void yyerror(const char *msg);
-extern int currLine;
-extern int currPosition;
-extern int yylex();
-extern FILE * yyin;
+    int yylex(void);
+    void yyerror(const char *msg);
+    extern int currLine;
+    extern int currPosition;
+    extern FILE * yyin;
 
-ostringstream code;
-vector<string> funcs;
-vector<string> decs;
-vector<string> decType;
-vector<string> temps;
-vector<string> labels;
-vector<string> stmnts;
+    vector<string> func;
+    vector<string> param;
+    vector<string> operand;
+    vector<string> symbols;
+    vector<string> symbolTypes;
+    vector<string> statements;
 
-int tempCount = 0;
-int labelCount = 0;
+    vector<string> ifStatements; //
+
+    vector<string> param_;
+	stringstream milhouse;
+
+    bool addParam = false;
+    int labelCount = 0;
+    int tempCount = 0;
 
 %}
-/* Bison Declarations */
+
+
 %union {
-   char* ident; // needed for name of identifier
-   int val;     // needed for value of number
+   int val;
+   char* ident;
 }
 
-
-// Start Symbol
+%error-verbose
 %start prog_start
-// Reserved Words
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
-// Arithmetic Operators
-%left SUB ADD MULT DIV MOD
-// Comparison Operators
-%left EQ NEQ LT GT LTE GTE
-// Other Special Symbols
-%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
-// Identifiers and Numbers
 %token <val> NUMBER
 %token <ident> IDENT
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY
+%token INTEGER ARRAY OF IF THEN ENDIF ELSE WHILE DO FOREACH IN BEGINLOOP ENDLOOP
+%token CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
+%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
+%left SUB ADD MULT DIV MOD
+%left EQ NEQ LT GT LTE GTE
 
 
-
-/* Grammar Rules */
 %%
-prog_start:    functions 
-               ;
 
-functions:      
-               |   function functions
-               ;
-function:      FUNCTION IDENT SEMICOLON {funcs.push_back("func " + string($2));}
-               BEGIN_PARAMS declarations END_PARAMS 
-               BEGIN_LOCALS declarations END_LOCALS 
-               BEGIN_BODY statements END_BODY 
-               {
-                  // Output function name
-                  cout << funcs[0] << endl;
-                  // Output declarations
-                  for(int i = 0; i < decs.size(); i++){
-                     if(decType[i] == "0"){
-                        cout << ". " << decs[i] << endl;
-                     }else{
-                        cout << ".[] " << decs[i] << ", " << decType[i] << endl;
-                     }
-                  }
-                  // Output statements
-                  // for(int j = 0; j < stmnts.size(); j++){
-                  //    cout << stmnts[j] << endl;
-                  // }
-               }
-               ;
+prog_start:		function_loop
+    			;
 
-declarations:  
-               |   declaration SEMICOLON declarations 
-               ;
+function_loop:
+    			| function function_loop
+    			;
 
-declaration:   decID COLON INTEGER 
-               {
-                  decType.push_back("0"); // is an integer 
-               }
-               |   decID COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER
-               {
-                  decType.push_back(to_string($5));
-               }
-               ;
+function:		FUNCTION IDENT {func.push_back(string("func ") + $2);} SEMICOLON BEGIN_PARAMS {addParam = true;} 
+			declaration_block{
+				 while9!param_stack.empty()){
+	END_PARAMS {addParam = false;} BEGIN_LOCALS declaration_loop END_LOCALS BEGIN_BODY statement_loop END_BODY {
+        		cout << func[0] << endl;
+        		// Prints Variables
+        		for(unsigned i = 0; i < symbols.size(); i++) {
+            	if(symbolTypes[i] == "INT") {
+                	cout << "." << " " << symbols[i] << endl;
+            	}
+            	else {
+                		cout << ".[]" << symbols[i] << "," << " "  << symbolTypes[i] << endl;
+            		}
+        		}
+        
+        		// Prints Statements
+        		for(unsigned i = 0; i < statements.size(); i++) {
+            		cout << statements[i] << endl;
+        		}
+        		symbols.clear();
+        		symbolTypes.clear();
+       			statements.clear();
+        		param.clear();
+        		cout << "endfunc" << endl;
+    			}
+    			;
 
-decID:         IDENT 
-               {
-                  decs.push_back(string($1));
-               }
-               |  IDENT COMMA decID
-               {
-                  decs.push_back(string($1));
-               }
-               ;
+declaration_loop:
+				| declaration SEMICOLON declaration_loop
+    			;
 
-statements:    
-               |  statement SEMICOLON statements 
-               ;
+declaration:	id_loop COLON storing
+    			;
 
+id_loop:		IDENT {
+        			symbols.push_back(string(" ") + $1);
+    			}
+    			| IDENT COMMA id_loop {
+        			symbols.push_back(string(" ") + $1);
+        			symbolTypes.push_back("INT");
+    			}
+    			;
 
-statement:     var ASSIGN exprs
-               {
-                  
-               }
-               |  IF bool-expr THEN statements ENDIF 
-               {
-                  
-               }
-               |  IF bool-expr THEN statements ELSE statements ENDIF 
-               {
-                  
-               }
-               |  WHILE bool-expr BEGINLOOP statements ENDLOOP 
-               {
-                  
-               }
-               |  DO BEGINLOOP statements ENDLOOP WHILE bool-expr
-               |  READ vars {printf("statement -> READ vars\n");}
-               |  WRITE vars {printf("statement -> WRITE vars\n");}
-               |  CONTINUE {printf("statement -> CONTINUE\n");}
-               |  RETURN expr {printf("statement -> RETURN expr\n");}
-               ;
+storing:		INTEGER { 
+        			symbolTypes.push_back("INT");
+    			}
+    			| ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
+        			symbolTypes.push_back(to_string($3));
+    			}
+    			;
+ 
+statement_loop:
+			    | statement SEMICOLON statement_loop
+    			;
 
-bool-expr:      rel-and-exprs {printf("bool-expr -> rel-and-exprs\n");}
-                ;
+statement:		var ASSIGN expression {
+        			statements.push_back("= " + stack.back().substr(0,stack.back().length()-1));
+        			stack.pop_back();
+    			}
+    			| IF bool_expr THEN statement_loop ENDIF {
+        			labelCount++;
+        			string label1 = "label1" + to_string(labelCount);
+        			string label2 = "lable2" + to_string(labelCount);
+        			statements.push_back("?:= " + label1 + ", " + operand.back());
+        			operand.pop_back();
+        			statements.push_back(": " + label2);
 
-rel-and-exprs:	rel-and-expr {printf("rel-and-exprs -> rel-and-expr\n");}
-		|	rel-and-expr OR rel-and-exprs {printf("rel-and-exprs -> rel-and-expr OR rel-and-exprs\n");}
-		;
+    			}
+    			| IF bool_expr THEN statement_loop ELSE statement_loop ENDIF {
+        			string label1 = "label1" + to_string(labelCount);
+        			string label2 = "label2" + to_string(labelCount);
+        			string label3 = "label3" + to_string(labelCount);
+        			statements.push_back("?:= " + label1 + ", " + operand.back());
+        			operand.pop_back();
+        			statements.push_back(":= " + label2); //goto ifFalse statement
+        			statements.push_back(": " + label3);
 
-rel-and-expr:   rel-exprs {printf("rel-and-expr -> rel-exprs\n");}
-                ;
+    			}
+    			| WHILE bool_expr BEGINLOOP statement_loop ENDLOOP {
+        			labelCount++;
+        			string label = "label" + to_string(labelCount);
+        			statements.push_back(label);
 
-rel-exprs:	rel-expr {printf("rel-exprs -> rel-expr\n");}
-		|   rel-expr AND rel-exprs {printf("rel-and-exprs -> rel-expr AND rel-exprs\n");}
-		;
+    			}
+    			| DO BEGINLOOP statement_loop ENDLOOP WHILE bool_expr {
+        			labelCount++;
+        			string label = "label" + to_string(labelCount);
+        			statements.push_back(label);
+    			}
+    			| READ var var_loop {
+        			statements.push_back(".< " + stack.back());
+        			stack.pop_back();
+    			}
+    			| WRITE var var_loop {
+        			statements.push_back(".> " + stack.back());
+        			stack.pop_back();
+  				}
+    			| CONTINUE
+    			| RETURN expression
+   				;
 
-rel-expr:       NOT expr comp expr {printf("rel-expr -> NOT expr comp expr\n");}
-                |   NOT TRUE {printf("rel-expr -> NOT TRUE\n");}
-                |   NOT FALSE {printf("rel-expr -> NOT FALSE\n");}
-                |   NOT L_PAREN bool-expr R_PAREN {printf("rel-expr -> NOT L_PAREN bool-expr R_PAREN\n");}
-                |   expr comp expr {printf("rel-expr -> expr comp expr\n");}
-                |   TRUE {printf("rel-expr -> TRUE\n");}
-                |   FALSE {printf("rel-expr -> FALSE\n");}
-                |   L_PAREN bool-expr R_PAREN {printf("rel-expr -> L_PAREN bool-expr R_PAREN\n");}
-                ;
+var_loop:
+				| COMMA var var_loop {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+    			}
+    			;
 
-comp:           EQ {printf("comp -> EQ\n");}
-                |   NEQ {printf("comp -> NEQ\n");}
-                |   LT {printf("comp -> LT\n");}
-                |   GT {printf("comp -> GT\n");}
-                |   LTE {printf("comp -> LTE\n");}
-                |   GTE {printf("comp -> GTE\n");}
-                ;
+bool_expr:		relation_and_expr
+    			| bool_expr OR relation_and_expr {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+        			
+					string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
 
-exprs:          expr {printf("exprs -> expr\n");}
-                |   expr COMMA exprs {printf("exprs -> expr COMMA exprs\n");}
-                ;
+        			statements.push_back("|| " + t + ", " + operand1 + ", " + operand2);
+					operand.push_back(t);
+    			}
+    			;
 
-expr:           mult-expr expr-loop {printf("expr -> mult-expr expr-loop\n");}
-		; 	
-                
-expr-loop:	{printf("expr-loop -> epsilon \n");}
-		|   ADD mult-expr expr-loop {printf("expr-loop -> ADD mult-expr expr-loop \n");}
-		|   SUB mult-expr expr-loop {printf("expr-loop -> SUB mult-expr expr-loop \n");}
-		;
+relation_and_expr:relation_expr1
+    			| relation_and_expr AND relation_expr1 {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
 
-mult-expr:      term mult-expr-loop {printf("mult-expr -> term mult-expr-loop \n");}
-		;
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
 
-mult-expr-loop:	{printf("mult-expr-loop -> epsilon\n");}
-		|   MULT term mult-expr-loop {printf("mult-expr -> MULT term mult-expr-loop \n");}
-                |   DIV term mult-expr-loop {printf("mult-expr -> DIV term mult-expr-loop\n");}
-                |   MOD term mult-expr-loop {printf("mult-expr -> MOD term mult-expr-loop \n");}
-                ;
+        			statements.push_back("&& " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			;
 
-term:           SUB var {printf("term -> SUB var\n");}
-                |   SUB NUMBER {printf("term -> SUB number\n");}
-                |   SUB L_PAREN expr R_PAREN {printf("term -> SUB L_PAREN expr R_PAREN\n");}
-                |   SUB IDENT L_PAREN exprs R_PAREN {printf("term -> SUB ident L_PAREN exprs R_PAREN\n");}
-                |   var {printf("term -> var\n");}
-                |   NUMBER {printf("term -> number\n");}
-                |   L_PAREN expr R_PAREN {printf("term -> L_PAREN expr R_PAREN\n");}
-                |   IDENT L_PAREN exprs R_PAREN {printf("term -> ident L_PAREN exprs R_PAREN\n");}
-                ;
+relation_expr1:	relation_expr2
+    			| NOT relation_expr2 {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+       				symbols.push_back(t);
+        			symbolTypes.push_back("INT");
 
+        			statements.push_back("! " + t + ", " + operand.back());
+        			operand.pop_back();
+       				operand.push_back(t);
+    			}
+    			;
 
-vars:           var {printf("vars -> var\n");}
-                |   var COMMA vars {printf("vars -> var COMMA vars\n");}
-                ;
+relation_expr2:	expression comp expression
+    			| TRUE {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
 
-var:            IDENT{printf("var -> ident\n");}
-                | IDENT L_SQUARE_BRACKET expr R_SQUARE_BRACKET {printf("var -> ident L_SQUARE_BRACKET expr R_SQUARE_BRACKET\n");}
+        			statements.push_back("= " + t + ", 1");
+        			operand.push_back(t);
+   				}
+    			| FALSE {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			statements.push_back("= " + t + ", 0");
+        			operand.push_back(t);
+    			}
+    			| L_PAREN bool_expr R_PAREN
+    			;
+
+comp:			EQ {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("== " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			| NEQ {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("!= " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+   				}
+    			| LT {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("< " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			| GT {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("> " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			| LTE {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+       	 			statements.push_back("<= " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			| GTE {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back(">= " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			;
+
+expression:		multiplicative_expr expression_loop
+    			;
+
+expression_loop:
+			   | ADD multiplicative_expr expression_loop {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("+ " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			| SUB multiplicative_expr expression_loop {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("- " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			;
+
+multiplicative_expr: term1 multiplicative_expr_loop
+    			;
+
+multiplicative_expr_loop:
+				| MULT term1 multiplicative_expr_loop {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("* " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			| DIV term1 multiplicative_expr_loop {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("/ " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			| MOD term1 multiplicative_expr_loop {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			string operand1 = operand.back();
+        			operand.pop_back();
+        			string operand2 = operand.back();
+        			operand.pop_back();
+
+        			statements.push_back("% " + t + ", " + operand1 + ", " + operand2);
+        			operand.push_back(t);
+    			}
+    			;
+
+term1:			term2
+    			| SUB term2
+    			| IDENT L_PAREN R_PAREN
+    			| IDENT L_PAREN expr_comma_loop R_PAREN
+    			;
+
+term2:     		var
+    			| NUMBER {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+
+        			statements.push_back("= " + t + ", " + to_string($1));
+        			operand.push_back(t);
+    			}
+    			| L_PAREN expression R_PAREN
+    			;
+
+expr_comma_loop:	expression
+    			| expression COMMA expr_comma_loop
+    			;
+
+var:			IDENT {
+        		string temp = $1;
+        		stack.push_back(temp);
+        		operand.push_back(temp);
+    			}
+    			| IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+        			tempCount++;
+        			string t = "t" + to_string(tempCount);
+        			symbols.push_back(t);
+        			symbolTypes.push_back("INT");
+        			statements.push_back(".< " + t);
+        			statements.push_back(string("[]= ") + $1 + "," + to_string(tempCount));
+        			operand.push_back(string("[] ") + $1 + operand.back());
+    			}
+    			;
+
 %%
-/* Additional C Code */
+
 int main(int argc, char **argv) {
-   // Allow for command-line specification of MiniJava source file
-   if ( argc > 1  &&  freopen( argv[1], "r", stdin) == NULL ) {
-    cerr << argv[0] << ": file " << argv[1]; 
-    cerr << " cannot be opened.\n";
-    exit( 1 ); 
-  }
-  yyparse();                                
-  return 0;
+   if (argc > 1) {
+      yyin = fopen(argv[1], "r");
+      if (yyin == NULL){
+         printf("syntax: %s filename\n", argv[0]);
+      }//end if
+   }//end if
+   yyparse(); // Calls yylex() for tokens.
+   return 0;
 }
 
 void yyerror(const char *msg) {
    printf("** Line %d, position %d: %s\n", currLine, currPosition, msg);
+
 }
 
-string newTemp(){
-   string temp = "t" + tempCount;
-   tempCount++;
-   return temp;
-}
-
-string newLabel(){
-   string label = "l" + labelCount;
-   labelCount++;
-   return label;
-}
