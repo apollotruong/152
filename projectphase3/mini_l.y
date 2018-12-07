@@ -22,6 +22,7 @@
     vector<string> symbols;
     vector<string> symbolTypes;
     vector<string> statements;
+    vector<string> cross;
 
     vector<string> ifStatements; //
 
@@ -61,10 +62,8 @@ function_loop:
     			| function function_loop
     			;
 
-function:		FUNCTION IDENT {func.push_back(string("func ") + $2);} SEMICOLON BEGIN_PARAMS {addParam = true;} 
-			declaration_block{
-				 while9!param_stack.empty()){
-	END_PARAMS {addParam = false;} BEGIN_LOCALS declaration_loop END_LOCALS BEGIN_BODY statement_loop END_BODY {
+function:		FUNCTION IDENT {func.push_back(string("func ") + $2);} SEMICOLON BEGIN_PARAMS declaration_loop
+	END_PARAMS BEGIN_LOCALS declaration_loop END_LOCALS BEGIN_BODY statement_loop END_BODY {
         		cout << func[0] << endl;
         		// Prints Variables
         		for(unsigned i = 0; i < symbols.size(); i++) {
@@ -117,8 +116,8 @@ statement_loop:
     			;
 
 statement:		var ASSIGN expression {
-        			statements.push_back("= " + stack.back().substr(0,stack.back().length()-1));
-        			stack.pop_back();
+        			statements.push_back("= " + cross.back().substr(0,cross.back().length()-1));
+        			cross.pop_back();
     			}
     			| IF bool_expr THEN statement_loop ENDIF {
         			labelCount++;
@@ -151,12 +150,12 @@ statement:		var ASSIGN expression {
         			statements.push_back(label);
     			}
     			| READ var var_loop {
-        			statements.push_back(".< " + stack.back());
-        			stack.pop_back();
+        			statements.push_back(".< " + cross.back());
+        			cross.pop_back();
     			}
     			| WRITE var var_loop {
-        			statements.push_back(".> " + stack.back());
-        			stack.pop_back();
+        			statements.push_back(".> " + cross.back());
+        			cross.pop_back();
   				}
     			| CONTINUE
     			| RETURN expression
@@ -433,7 +432,7 @@ expr_comma_loop:	expression
 
 var:			IDENT {
         		string temp = $1;
-        		stack.push_back(temp);
+        		cross.push_back(temp);
         		operand.push_back(temp);
     			}
     			| IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
