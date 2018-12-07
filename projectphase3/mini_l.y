@@ -1,268 +1,675 @@
-/* CS152 Project Phase 2 */
-/* Apollo Truong, Sidney Son */
 
-/* A parser for the mini-L language using Bison */
-
-
-/* C Declarations */
 %{
-#include <stdio.h>
-#include <stdlib.h>	
-#include <vector>
-#include <string.h>
+  #define YY_NO_UNPUT
+  #include <iostream>
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string>
+  #include <string.h>
+  #include <fstream>
+  #include <sstream>
+  #include <map>
+  #include <stack>
+  #include <vector>
 
-void yyerror(const char *msg);
-extern int currLine;
-extern int currPosition;
-FILE * yyin;
-extern int yylex();
-vector<string> funcs;
-vector<string> decs;
-vector<string> decType;
-vector<string> states;
-vector<string> temps;
-int tempCount = 0;
-int labelCount = 0;
+  using namespace std;
 
-vector<string> functions;
-vector<string> parameters;
-vector<string> operand;
-vector<string> symbols;
-vector<string> statements;
+  //#define YYDEBUG 1
+  //#define YYPRINT(file, type, value) yyprint (file, type value)
+  //yydebug = 1;
+  enum symbol_type {INT, INTARRAY, FUNC};
 
-vector<string> ifStatements;
+  struct Func {
+    string name;
+    Func(): name() {}
+    Func(string n) 
+    : name(n){}
+  };
 
-vector<string> stack;
+  struct Sym {
+    int val;
+    int size;
+    string name;
+    symbol_type type; 
+    Sym():val(0),size(0),name(),type() {}
+    Sym(int v, int s, string n, symbol_type t) 
+    :val(v), size(s), name(n), type(t)
+    {}
+  };
 
-bool addParam = false;
-int labelNumber = 0;
-int varNumber = 0;
-stringstream stream;
+  extern FILE *yyin;
+  int yylex(void);
+  void yyerror(const char *message);
+  extern int currLine;
+  extern int currPos;
 
+  stack<string> ident_stack; // using
+  stack<string> var_stack; // using
+  stack<string> exp_stack; // using
+  stack<string> param_stack; //using
+  stack<string> label_stack; //using
+  
+  void add_symbol(Sym sym);
+  void add_func(Func func);
+  void check_symbol(string name);
+  void check_func(string name);
+  void print_declarations();
+  string make_temp();
+  string make_label();
+  map<string, Sym> symbol_table;
+  map<string, Func> func_table;
 
+  stringstream milhouse;
+  ostringstream out_code;
 
+  int temp_cnt = 0;
+  int label_cnt = 0;
+  int param_cnt = 0;
+  bool main_exists = 0;
+  
 %}
-/* Bison Declarations */
-%union {
-   string ident; // needed for name of identifier
-   int val;     // needed for value of number
+
+%union{
+  char* ident_str;
+  int num_val;
+
+  struct attributes {
+    char name[255];
+    char index[255];
+    int type; //0 = int, 1 = int array, 2 = function
+    int val;
+    int size_attr;
+  } attr;
 }
-// Start Symbol
-%start prog_start
-// Reserved Words
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
-// Arithmetic Operators
-%left SUB ADD MULT DIV MOD
-// Comparison Operators
-%left EQ NEQ LT GT LTE GTE
-// Other Special Symbols
+
+%error-verbose
+%debug
+%start start
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY
+%token END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE WHILE DO BEGINLOOP ENDLOOP
+%token CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN NUMBER IDENT 
+
+%token SUB ADD MULT DIV MOD UMINUS
+
+%token EQ NEQ LT GT LTE GTE
+
 %token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
-// Identifiers and Numbers
-%token <val> NUMBER
-%token <ident> IDENT
 
-/* Grammar Rules */
-%%
-prog_start:    functions 
-               ;
+%type <ident_str> IDENT
+%type <num_val> NUMBER
 
-functions:     
-               |   function functions 
-               ;
-function:      FUNCTION IDENT {funcs.push_back("func " + $2);}
-               SEMICOLON BEGIN_PARAMS declarations END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY 
-               { 
-                  for(unsigned i = 0; i < funcs.size(); i++){
-                     // Print function name
-                     cout << funcs[0] << endl;
+%right ASSIGN
+%left OR
+%left AND
+%right NOT
+%right UMINUS
+%left ADD SUB
+%left MULT DIV
+%left L_SQUARE_BRACKET R_SQUARE_BRACKET
+%left L_PAREN R_PAREN
 
-                     // Print declarations
-                     for(unsigned j = 0; j < decs.size(); j++){
-                        if(decType[j] == "INT"){
-                           cout << ". " << decs[i] << endl;
-                        }else {
-                           cout << ".[] " << decs[i] << ", " << decType[i] << endl;
-                        }
-                     }
+//%type<ident_str> comma_ident
+//%type<ident_str> declaration
 
-                     // Print statements
-                     for(unsigned k = 0; k < statements.size(); k++){
-                        cout << statements[i] << endl;
-                     }
-                     cout << "endfunc" << endl;
-                  }
-               }
-               ;
-
-declarations:  
-               |   declarations declaration SEMICOLON 
-               ;
-
-declaration:   identifiers COLON INTEGER 
-               {
-                  decType.push_back("INT");
-               }
-               |   identifiers COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER 
-               { 
-                  decType.push_back(to_string($5));
-               }
-               ;
-
-identifiers:   IDENT 
-               { 
-                  decs.push_back(" " + $1);
-               }
-               |   IDENT COMMA identifiers 
-               {
-                  decs.push_back(" " + $1);
-                  decs.push_back("INT");
-               }
-               ;
-
-statements:    
-               |   statement SEMICOLON statements 
-               ;
-
-statement:     var ASSIGN expr 
-               {
-                  statements.push_back("= " + temps.back());
-                  temps.pop_back();
-               }
-               |   IF bool-expr THEN statements ENDIF 
-               {
-					labelNumber++;
-					ifTrue = "IF_TRUE_LABEL_" + to_string(labelNumber);
-					string endIf = "End_If_LABEL" + to_string(labelNumber);
-					statements.push_back("?:= " + ifTrue + ", " + operand.back());
-					operand.pop_back();
-					statements.push_back(":= " + ifElse);
-					statements.push_back(": " ++ endIf);
-               }
-               |   IF bool-expr THEN statements ELSE statements ENDIF {
-
-					string ifTrue = "IF_TRUE_LABEL_" + to_string(labelNumber);
-					string ifElse = "IF_ELSE_LABEL_" + to_string(labelNumber);
-					string endIf = "END_IF_LABEL_" + to_string(labelNumber);
-					statements.push_back("?:= " + ifTrue + ", " + operand.back();
-					operand.pop_back();
-					statements.push_back(":= " + ifElse);
-					statements.push_back(":= + endIf);
-				}
-
-               |   WHILE bool-expr BEGINLOOP statements ENDLOOP {
-					labelNumber++;
-					string whileLabel = "WHILE_LOOP_ + t_string(labelNumber);
-					statements.push_back(whileLabel);}
-               |   DO BEGINLOOP statements ENDLOOP WHILE bool-expr { /*printf("statement -> DO BEGINLOOP statements ENDLOOP WHILE bool-expr\n");*/}
-               |   READ vars 
-               {
-                  statements.push_back(".< " + temps.back());
-                  temps.pop_back();
-               }
-               |   WRITE vars 
-               {
-                  statements.push_back(".> " + temps.back());
-                  temps.pop_back();
-               }
-               |   CONTINUE
-               |   RETURN expr 
-               ;
-
-bool-expr:     rel-and-exprs { /*printf("bool-expr -> rel-and-exprs\n");*/}
-               ;
-
-rel-and-exprs:	rel-and-expr { /*printf("rel-and-exprs -> rel-and-expr\n");*/}
-		         |	rel-and-expr OR rel-and-exprs { /*printf("rel-and-exprs -> rel-and-expr OR rel-and-exprs\n");*/}
-		         ;
-
-rel-and-expr:  rel-exprs { /*printf("rel-and-expr -> rel-exprs\n");*/}
-               ;
-
-rel-exprs:  	rel-expr { /*printf("rel-exprs -> rel-expr\n");*/}
-		         |   rel-expr AND rel-exprs { /*printf("rel-and-exprs -> rel-expr AND rel-exprs\n");*/}
-		         ;
-
-rel-expr:      NOT expr comp expr { /*printf("rel-expr -> NOT expr comp expr\n");*/}
-               |   NOT TRUE { /*printf("rel-expr -> NOT TRUE\n");*/}
-               |   NOT FALSE { /*printf("rel-expr -> NOT FALSE\n");*/}
-               |   NOT L_PAREN bool-expr R_PAREN { /*printf("rel-expr -> NOT L_PAREN bool-expr R_PAREN\n");*/}
-               |   expr comp expr { /*printf("rel-expr -> expr comp expr\n");*/}
-               |   TRUE { /*printf("rel-expr -> TRUE\n");*/}
-               |   FALSE { /*printf("rel-expr -> FALSE\n");*/}
-               |   L_PAREN bool-expr R_PAREN { /*printf("rel-expr -> L_PAREN bool-expr R_PAREN\n");*/}
-               ;
-
-comp:          EQ { /*printf("comp -> EQ\n");*/}
-               |   NEQ { /*printf("comp -> NEQ\n");*/}
-               |   LT { /*printf("comp -> LT\n");*/}
-               |   GT { /*printf("comp -> GT\n");*/}
-               |   LTE { /*printf("comp -> LTE\n");*/}
-               |   GTE { /*printf("comp -> GTE\n");*/}
-               ;
-
-exprs:         expr { /*printf("exprs -> expr\n");*/}
-               |   expr COMMA exprs { /*printf("exprs -> expr COMMA exprs\n");*/}
-               ;
-
-expr:           mult-expr expr-loop { /*printf("expr -> mult-expr expr-loop\n");*/}
-		         ; 	
-                
-expr-loop:	   { /*printf("expr-loop -> epsilon \n");*/}
-               |   ADD mult-expr expr-loop { /*printf("expr-loop -> ADD mult-expr expr-loop \n");*/}
-               |   SUB mult-expr expr-loop { /*printf("expr-loop -> SUB mult-expr expr-loop \n");*/}
-               ;
-
-mult-expr:      term mult-expr-loop { /*printf("mult-expr -> term mult-expr-loop \n");*/}
-		         ;
-
-mult-expr-loop:	{ /*printf("mult-expr-loop -> epsilon\n");*/}
-		         |   MULT term mult-expr-loop { /*printf("mult-expr -> MULT term mult-expr-loop \n");*/}
-               |   DIV term mult-expr-loop { /*printf("mult-expr -> DIV term mult-expr-loop\n");*/}
-               |   MOD term mult-expr-loop { /*printf("mult-expr -> MOD term mult-expr-loop \n");*/}
-               ;
-
-term:          SUB var { /*printf("term -> SUB var\n");*/}
-               |   SUB number { /*printf("term -> SUB number\n");*/}
-               |   SUB L_PAREN expr R_PAREN { /*printf("term -> SUB L_PAREN expr R_PAREN\n");*/}
-               |   SUB ident L_PAREN exprs R_PAREN { /*printf("term -> SUB ident L_PAREN exprs R_PAREN\n");*/}
-               |   var { /*printf("term -> var\n");*/}
-               |   number { /*printf("term -> number\n");*/}
-               |   L_PAREN expr R_PAREN { /*printf("term -> L_PAREN expr R_PAREN\n");*/}
-               |   ident L_PAREN exprs R_PAREN { /*printf("term -> ident L_PAREN exprs R_PAREN\n");*/}
-               ;
-
-number:        NUMBER { /*printf("number -> NUMBER %d\n", $1);*/}
-               ;
-
-vars:          var { /*printf("vars -> var\n");*/}
-               |   var COMMA vars { /*printf("vars -> var COMMA vars\n");*/}
-               ;
-
-var:           IDENT
-               {
-                  string temp = $1;
-                  temps.push_back(temp);
-               }
-               | IDENT L_SQUARE_BRACKET expr R_SQUARE_BRACKET 
-               {
-                  
-               }
-               ;
+%type<attr> var expression term declaration statement multiplicative_expr bool_expr relation_and_expr relation_expr rel_expr
+%type<ident_str> comp
 
 %%
-/* Additional C Code */
-int main(int argc, char **argv) {
-   //yylex();
-   if (argc > 1) {
-      yyin = fopen(argv[1], "r");
-      if (yyin == NULL){
-         printf("syntax: %s filename\n", argv[0]);
-      }//end if
-   }//end if
-   yyparse(); // Calls yylex() for tokens.
-   return 0;
+
+start: program {if(!main_exists){yyerror("error: main not declared");}}
+     ;
+
+program: 
+       | function program 
+       ;
+
+function: FUNCTION IDENT {milhouse << "func " << string($2) << endl;} SEMICOLON BEGIN_PARAMS 
+          declaration_block { 
+            while (!param_stack.empty()){
+              milhouse << "= " << param_stack.top() << ", " << "$" << param_cnt++ << endl;
+              param_stack.pop();
+            }
+          } 
+          END_PARAMS  BEGIN_LOCALS declaration_block END_LOCALS BEGIN_BODY statement SEMICOLON statement_block END_BODY {
+
+            out_code << "endfunc\n";
+            symbol_table.clear();
+            if (strcmp($2, "main")==0) {
+              main_exists = 1;      
+            }
+            Func f($2);
+            add_func(f);
+            while (!param_stack.empty()) {
+              param_stack.pop();
+            }
+          }
+        ;
+
+declaration_block:  
+                 | declaration SEMICOLON declaration_block 
+                 ;
+
+statement_block: 
+               | statement SEMICOLON statement_block 
+               ;
+
+declaration: IDENT comma_ident COLON INTEGER {
+               ident_stack.push($1);
+               param_stack.push($1);
+               while(!ident_stack.empty()) {
+                 string temp = ident_stack.top();
+                 Sym sym(0,0,temp,INT); 
+                 add_symbol(sym);
+                 milhouse << ". " << temp << endl;
+                 ident_stack.pop(); 
+               }
+             }
+           | IDENT comma_ident COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
+               ident_stack.push($1);
+               param_stack.push($1);
+               while(!ident_stack.empty()) {
+                 string temp = ident_stack.top();
+                 Sym sym(0,$6,temp,INTARRAY);
+                 add_symbol(sym);
+                 milhouse << ".[] " << temp << ", " << $6 << endl;
+                 ident_stack.pop(); 
+               }
+             }
+           ;
+
+comma_ident: 
+            | COMMA IDENT comma_ident {
+               ident_stack.push($2);
+               param_stack.push($2);
+             }
+           ;
+
+statement: var ASSIGN expression {
+             if ($1.type == 0) { //Check if var is an int
+                 milhouse << "= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+              
+             }
+             else { //Check if var is an int array
+                 milhouse << "[]= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($1.index) << ", " << const_cast<char*>($3.name) << endl;
+             } 
+             out_code << milhouse.rdbuf();
+             milhouse.clear();
+             milhouse.str(" ");
+          }
+         | IF bool_expr THEN {
+             string start = make_label();
+             string endif = make_label();
+             label_stack.push(endif); 
+             milhouse << "?:= " << start << ", " << const_cast<char*>($2.name) << endl;
+             milhouse << ":= " << endif << endl;
+             milhouse << ": " << start << endl;
+           } 
+           statement SEMICOLON statement_block else_block ENDIF {
+             milhouse << ": " << label_stack.top() << endl;
+             label_stack.pop();
+             
+             out_code << milhouse.rdbuf();
+             milhouse.clear();
+             milhouse.str(" ");
+
+           }
+          | WHILE bool_expr BEGINLOOP {
+
+              string conditional = make_label();
+              string endlabel = make_label();
+              string start = make_label();
+              out_code << ": " << start << endl;
+
+              out_code << milhouse.rdbuf();
+              milhouse.clear();
+              milhouse.str(" ");
+            
+              milhouse << "?:= " << conditional << ", " << const_cast<char*>($2.name) << endl;
+              milhouse << ":= " << endlabel << endl;
+              milhouse << ": " << conditional << endl;
+
+              label_stack.push(start);
+              label_stack.push(endlabel);
+
+            } statement SEMICOLON statement_block ENDLOOP {
+                out_code << milhouse.rdbuf();
+                milhouse.clear();
+                milhouse.str(" ");
+
+                string endlabel = label_stack.top();
+                label_stack.pop();
+                string start = label_stack.top();
+                label_stack.pop();
+
+                milhouse << ":= " << start << endl;
+                milhouse << ": " << endlabel << endl;
+ 
+
+                out_code << milhouse.rdbuf();
+                milhouse.clear();
+                milhouse.str(" ");
+           }
+          | DO BEGINLOOP {
+             string start = make_label();
+             label_stack.push(start);
+             out_code << ": " << start << endl;
+             out_code << milhouse.rdbuf();
+             milhouse.clear();
+             milhouse.str(" ");
+
+            }
+           statement SEMICOLON statement_block ENDLOOP WHILE bool_expr {
+             string start = label_stack.top();
+             milhouse << "?:= " << start << ", " << const_cast<char*>($9.name) << endl;
+             label_stack.pop(); 
+             
+             out_code << milhouse.rdbuf();
+             milhouse.clear();
+             milhouse.str(" ");
+           }
+         | READ var var_block {
+             var_stack.push($2.name);
+             while (!var_stack.empty()) {
+                if ($2.type == 0) {
+                    milhouse << ".< " << var_stack.top() << endl;
+                    var_stack.pop();
+                }
+                else {
+                    milhouse << ".[]< " << var_stack.top() << ", "  <<  const_cast<char*>($2.index) << endl;
+                    var_stack.pop();
+                }
+             }
+             out_code << milhouse.rdbuf();
+             milhouse.clear();
+             milhouse.str(" ");
+          } 
+         | WRITE var var_block {
+            var_stack.push($2.name);
+            while (!var_stack.empty()) {
+                if ($2.type == 0) {
+                    milhouse << ".> " << var_stack.top() << endl;
+                    var_stack.pop();
+                }
+                else {
+                    milhouse << ".[]> " << var_stack.top() << ", "  <<  const_cast<char*>($2.index) << endl;
+                    var_stack.pop();
+                }
+            }
+            out_code << milhouse.rdbuf();
+            milhouse.clear();
+            milhouse.str(" ");
+         }
+         | CONTINUE {
+             if (!label_stack.empty()) {
+               milhouse << ":= " << label_stack.top() << endl;
+               out_code << milhouse.rdbuf();
+               milhouse.clear();
+               milhouse.str(" ");
+             }
+             else {
+               yyerror("error: cannot use continue outside a loop");
+             }
+           }
+         | RETURN expression {
+             $$.val = $2.val;
+             strcpy($$.name,$2.name);
+             milhouse << "ret " << const_cast<char*>($2.name) << endl;
+             out_code << milhouse.rdbuf();
+             milhouse.clear();
+             milhouse.str(" ");
+         }
+         ;
+
+else_block: 
+          | ELSE {
+              string label = make_label(); 
+              milhouse << ":= " << label << endl;
+              milhouse << ": " << label_stack.top() << endl;
+              label_stack.pop();
+              label_stack.push(label);
+          } statement SEMICOLON statement_block           // need to finish shit
+          ;
+
+var_block:  
+         | COMMA var var_block {
+             var_stack.push($2.name);
+           } 
+         ;
+
+bool_expr: bool_expr OR relation_and_expr {
+             string temp = make_temp();
+             strcpy($$.name, temp.c_str());
+             milhouse << ". " << temp << endl;
+             milhouse << "|| " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+           }
+         | relation_and_expr {
+             strcpy($$.name, $1.name);
+           }
+         ;
+
+relation_and_expr: relation_and_expr AND relation_expr {
+                    string temp = make_temp();
+                    strcpy($$.name, temp.c_str());
+                    milhouse << ". " << temp << endl;
+                    milhouse << "&& " << temp << ", " << const_cast<char*>($1.name) << ", " <<  const_cast<char*>($3.name) << endl;
+                   }
+                 | relation_expr {
+                       strcpy($$.name, $1.name);
+                    }
+                 ;
+
+relation_expr: rel_expr {
+                    strcpy($$.name, $1.name);
+                } 
+             | NOT rel_expr {
+                    string temp = make_temp();
+                    strcpy($$.name, temp.c_str());
+                    milhouse << "! " << temp << const_cast<char*>($2.name) << endl;
+                }
+             ;
+
+rel_expr: expression comp expression {
+          string temp = make_temp();
+          strcpy($$.name, temp.c_str());
+          milhouse << ". " << temp << endl;
+          milhouse << $2 << " " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+            }
+        | TRUE {
+            string temp = make_temp();
+            strcpy($$.name, temp.c_str());
+            milhouse << ". " << temp << endl;
+            milhouse << "= " << temp << ", " << "1" << endl;
+          }
+        | FALSE {
+            string temp = make_temp();
+            strcpy($$.name, temp.c_str());
+            milhouse << ". " << temp << endl;
+            milhouse << "= " << temp << ", " << "0" << endl;
+          }
+        | L_PAREN bool_expr R_PAREN {
+                strcpy($$.name, $2.name);
+            }
+        ;
+
+comp: EQ { $$ = const_cast<char*>("=="); } 
+    | NEQ { $$ = const_cast<char*>("!="); }
+    | LT { $$ = const_cast<char*>("<"); }
+    | GT { $$ = const_cast<char*>(">"); }
+    | LTE { $$ = const_cast<char*>("<="); }
+    | GTE { $$ = const_cast<char*>(">="); }
+    ;
+
+expression: expression ADD multiplicative_expr {
+              string temp = make_temp();
+              milhouse << ". " << temp << endl;
+              milhouse << "+ " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+              strcpy($$.name, temp.c_str());
+            }
+          | expression SUB multiplicative_expr {
+              string temp = make_temp();
+              milhouse << ". " << temp << endl;
+              milhouse << "- " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+              strcpy($$.name, temp.c_str());
+            }
+          |  multiplicative_expr {
+              strcpy($$.name,$1.name);
+              $$.type = $1.type;
+             }
+          ;
+
+multiplicative_expr: multiplicative_expr MULT term {
+                       string temp = make_temp();
+                       milhouse << ". " << temp << endl;
+                       milhouse << "* " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+                       strcpy($$.name, temp.c_str());
+                     }
+                   | multiplicative_expr DIV term {
+                       string temp = make_temp();
+                       milhouse << ". " << temp << endl;
+                       milhouse << "/ " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+                       strcpy($$.name, temp.c_str());
+                    }
+                   | multiplicative_expr MOD term {
+                       string temp = make_temp();
+                       milhouse << ". " << temp << endl;
+                       milhouse << "% " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+                       strcpy($$.name, temp.c_str());
+                    }
+                   | term{
+                       strcpy($$.name,$1.name);
+                       $$.type = $1.type;
+                     }
+                   ;
+
+term: SUB var {
+        $$.val = $2.val*-1;
+        $$.type = $2.type;
+        if ($2.type != 1) {// if int
+          string zero = make_temp();
+          string num = make_temp();
+          milhouse << ". " << zero << endl;
+          milhouse << "= " << zero << ", " << "0" << endl;
+          milhouse << ". " << num << endl;
+          milhouse << "= " << num << ", " << const_cast<char*>($2.name) << endl;
+          strcpy($$.name,make_temp().c_str());
+          milhouse << ". " << const_cast<char*>($$.name) << endl;
+          milhouse << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", " << num << endl;
+         }        
+        else if ($2.type == 1) { // if array
+          //b = make_temp();
+          string zero = make_temp();
+          string num = make_temp();
+          milhouse << ". " << zero << endl;
+          milhouse << "= " << zero << ", " << "0" << endl;
+          milhouse << ". " << num << endl;
+          milhouse << ". " << num << endl;
+          milhouse << "=[] " << num << ", " << const_cast<char*>($2.name) <<  ", " << const_cast<char*>($2.index) << endl;
+          strcpy($$.name,make_temp().c_str());
+          milhouse << ". " <<  const_cast<char*>($$.name)<< endl;
+          milhouse << "- " << const_cast<char*>($$.name) << ", " << zero <<  ", " << num << endl;
+        }
+
+      }
+    | var {
+        $$.val = $1.val;
+        $$.type = $1.type;
+        if ($1.type != 1) {
+          strcpy($$.name,make_temp().c_str());
+          strcpy($$.index,$$.name);
+          milhouse << ". " << const_cast<char*>($$.name) << endl;
+          milhouse << "= " << const_cast<char*>($$.name) <<  ", " << const_cast<char*>($1.name) << endl;
+        }
+        else if ($1.type == 1) { // if array
+          //b = make_temp();
+          strcpy($$.name,make_temp().c_str());
+          milhouse << ". " <<  const_cast<char*>($$.name)<< endl;
+          milhouse << "=[] " << const_cast<char*>($$.name) << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($1.index) << endl;
+        }
+
+      }
+    | SUB NUMBER {
+        $$.val = $2*-1;
+        // $$.type = 3;
+        $$.type = 0;
+        string zero = make_temp();
+        string num = make_temp();
+        milhouse << ". " << zero << endl;
+        milhouse << "= " << zero << ", " << "0" << endl;
+        milhouse << ". " << num << endl;
+        milhouse << "= " << num << ", " << $2 << endl;
+
+        strcpy($$.name, make_temp().c_str());
+        milhouse << ". " << const_cast<char*>($$.name) << endl;
+        milhouse << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< num << endl;
+     }
+    | NUMBER  {
+        $$.val = $1;
+        // $$.type = 3;
+        $$.type = 0;
+
+        strcpy($$.name, make_temp().c_str());
+        strcpy($$.index,$$.name);
+        milhouse << ". " << const_cast<char*>($$.name) << endl;
+        milhouse << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;
+      }
+     | SUB L_PAREN expression R_PAREN {
+
+       string zero = make_temp();
+
+       milhouse << ". " << zero << endl;
+       milhouse << "= " << zero << ", " << "0"<< endl;
+        
+       strcpy($$.name, make_temp().c_str());
+       milhouse << ". " << const_cast<char*>($$.name) << endl;
+       milhouse << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< const_cast<char*>($3.name) << endl;
+      }
+    | L_PAREN expression R_PAREN {
+        strcpy($$.name, $2.name);
+    }
+    | IDENT L_PAREN expression exp_comma_block R_PAREN {
+        check_func(const_cast<char*>($1));
+        exp_stack.push($3.name); 
+        while (!exp_stack.empty()){
+          milhouse << "param " << exp_stack.top() << endl;
+          exp_stack.pop();
+        }
+        string temp = make_temp();
+        milhouse << ". " << temp << endl;
+        milhouse << "call " << const_cast<char*>($1) << ", " << temp << endl;
+        strcpy($$.name,temp.c_str());
+      }
+    | IDENT L_PAREN R_PAREN {
+        check_func(const_cast<char*>($1));
+        string temp = make_temp();
+        milhouse << ". " << temp << endl;
+        milhouse << "call " << const_cast<char*>($1) << ", " << temp << endl;
+        strcpy($$.name,temp.c_str());
+      }
+    ;
+
+exp_comma_block: COMMA expression exp_comma_block {
+                   exp_stack.push($2.name); 
+                 }
+               |
+               ;
+
+var: IDENT {
+       check_symbol($1);
+       if(symbol_table[$1].type == INTARRAY) {
+         yyerror("Symbol is of type int array");
+       }
+       else {
+         strcpy($$.name,$1);
+         $$.type = 0;
+         //$$.val = symbol_table[$1].val;
+       }
+     }
+   | IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+       check_symbol($1);
+       if(symbol_table[$1].type == INT) {
+         yyerror("Symbol is of type int");
+       }
+       else {
+         if ($3.type == 1) {
+           string temp = make_temp();
+           $$.type = 1;
+           //strcpy($$.name, temp.c_str());
+           strcpy($$.index, temp.c_str());
+           strcpy($$.name, $1);
+
+           milhouse << ". " << temp << endl; 
+           milhouse << "=[] " << temp << ", " << const_cast<char*>($3.name) << ", " << const_cast<char*>($3.index) << endl;
+         }
+         else {
+           strcpy($$.name, $1);
+           $$.type = 1;
+           //$$.val = symbol_table[$1].val;
+           strcpy($$.index, $3.name);
+         }
+       }
+     }
+   ;
+
+%%
+
+int main (int argc, char **argv) {
+  if (argc > 1) {
+    yyin = fopen(argv[1], "r");
+    if (yyin == NULL) {
+      printf("syntax: %s filename\n", argv[0]);
+    }
+  }
+  yyparse();
+  ofstream file;
+  file.open("mil_code.mil");
+  file << out_code.str();
+  file.close();
+  return 0;
 }
 
-void yyerror(const char *msg) {
-   printf("** Line %d, position %d: %s\n", currLine, currPosition, msg);
+void yyerror(const char *message) {
+  printf("Syntax error on line %d: \"%s\" \n", currLine, message);
+}
+
+void yyerror(string message) {
+  cout << "Syntax error on line " << currLine << ": " << message << endl;
+}
+
+void add_symbol(Sym s) {
+  if (symbol_table.find(s.name) == symbol_table.end()) {
+    symbol_table[s.name] = s;
+  }
+  else {
+    string error = "Symbol already declared: " + s.name;
+    yyerror(error);
+  }
+}
+
+void add_func(Func f) {
+  if (func_table.find(f.name) == func_table.end()) {
+    func_table[f.name] = f;
+  }
+  else {
+    string error = "error: function already declared: " + f.name;
+    yyerror(error);
+  }
+}
+
+void check_symbol(string name) {
+  if(symbol_table.find(name) == symbol_table.end()) {
+    string error = "Symbol not declared: " + name;
+    yyerror(error);
+  }
+}
+
+void check_func(string name) {
+  if(func_table.find(name) == func_table.end()) {
+    string error = "Function not declared: " + name;
+    yyerror(error);
+  }
+}
+
+void print_declarations() {
+  for(map<string,Sym>::iterator it = symbol_table.begin(); it!=symbol_table.end();++it){
+    if (it->second.type == INT) {
+      milhouse << ". " << it->second.name << endl;
+    }
+    else {
+      milhouse << ".[] " << it->second.name << ", " << it->second.size << endl;
+    }
+  }
+}
+
+string make_temp() {
+  stringstream ss;
+  ss << temp_cnt++;
+  string temp = "__temp__" + ss.str();
+  return temp;
+}
+
+string make_label() {
+  stringstream ss;
+  ss << label_cnt++;
+  string temp = "__label__" + ss.str();
+  return temp;
 }
