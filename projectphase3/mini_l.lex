@@ -1,3 +1,5 @@
+/* CS152 Project Phase 2 */
+/* Apollo Truong, Sidney Son */
 
 %{
    #include "y.tab.h"
@@ -5,9 +7,7 @@
 %}
 
 DIGIT   [0-9]
-IDENTIFIER   [a-zA-Z][a-zA-Z0-9]*
-FAIL1   [0-9_]+[a-zA-Z0-9_]+
-FAIL2   [a-zA-Z0-9]*[_]
+IDENTIFIER   [a-zA-Z][a-zA-Z0-9\_]*
 COMMENT [##].*
 
 %%

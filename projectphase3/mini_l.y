@@ -1,12 +1,15 @@
+/* CS152 Project Phase 2 */
+/* Apollo Truong, Sidney Son */
 
 %{
 	#include <string.h>
 	#include <stdio.h>
 	#include <stdlib.h>
-    #include <vector>
+    
     #include <string>
     #include <sstream>
-    #include <iostream>
+    #include <vector>
+	#include <iostream>
     using namespace std;
 
     int yylex(void);
@@ -15,14 +18,17 @@
     extern int currPosition;
     extern FILE * yyin;
 
-    vector<string> func;
-    vector<string> operand;
+    
+    string newTemp();
+    string newLabel();
+
+
+	vector<string> func;
+    vector<string> ops;
     vector<string> symbols;
     vector<string> symbolTypes;
     vector<string> statements;
     vector<string> cross;
-    string newTemp();
-    string newLabel();
 
     int labelCount = 0;
     int tempCount = 0;
@@ -36,28 +42,65 @@
 }
 
 %error-verbose
-%start prog_start
+%start Program
 %token <val> NUMBER
 %token <ident> IDENT
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY
-%token INTEGER ARRAY OF IF THEN ENDIF ELSE WHILE DO FOREACH IN BEGINLOOP ENDLOOP
-%token CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
-%token SEMICOLON COLON COMMA L_PAREN R_PAREN L_SQUARE_BRACKET R_SQUARE_BRACKET ASSIGN
-%left SUB ADD MULT DIV MOD
-%left EQ NEQ LT GT LTE GTE
+%token FUNCTION 
+%token BEGIN_PARAMS
+%token END_PARAMS
+%token BEGIN_LOCALS
+%token END_LOCALS
+%token BEGIN_BODY
+%token END_BODY
+%token INTEGER
+%token ARRAY
+%token OF 
+%token IF
+%token THEN
+%token ENDIF
+%token ELSE
+%token WHILE
+%token DO
+%token FOREACH
+%token IN
+%token BEGINLOOP
+%token ENDLOOP
+%token CONTINUE
+%token READ
+%token WRITE
+%token AND
+%token OR
+%token NOT
+%token TRUE
+%token FALSE
+%token RETURN
+%token SEMICOLON
+%token COLON
+%token COMMA
+%token L_PAREN
+%token R_PAREN
+%token L_SQUARE_BRACKET
+%token R_SQUARE_BRACKET
+%token ASSIGN
+%left SUB 
+%left ADD
+%left MULT
+%left DIV
+%left MOD
+%left EQ NEQ LT GT LTE GTE '<' '>'
 
 
 %%
 
-prog_start:		function_loop
+Program:		functions
     			;
 
-function_loop:
-    			| function function_loop
+functions:
+    			| function functions
     			;
 
-function:		FUNCTION IDENT {func.push_back(string("func ") + $2);} SEMICOLON BEGIN_PARAMS declaration_loop
-	END_PARAMS BEGIN_LOCALS declaration_loop END_LOCALS BEGIN_BODY statement_loop END_BODY {
+function:		FUNCTION IDENT {func.push_back(string("func ") + $2);} SEMICOLON BEGIN_PARAMS declarations
+	END_PARAMS BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY {
         		cout << func[0] << endl;
         		// Prints Variables
         		for(unsigned i = 0; i < symbols.size(); i++) {
@@ -80,23 +123,23 @@ function:		FUNCTION IDENT {func.push_back(string("func ") + $2);} SEMICOLON BEGI
     			}
     			;
 
-declaration_loop:
-				| declaration SEMICOLON declaration_loop
+declarations:
+				| declaration SEMICOLON declarations
     			;
 
-declaration:	id_loop COLON storing
+declaration:	ids COLON push_symbol
     			;
 
-id_loop:		IDENT {
+ids:		IDENT {
         			symbols.push_back(string(" ") + $1);
     			}
-    			| IDENT COMMA id_loop {
+    			| IDENT COMMA ids {
         			symbols.push_back(string(" ") + $1);
         			symbolTypes.push_back("INT");
     			}
     			;
 
-storing:		INTEGER { 
+push_symbol:		INTEGER { 
         			symbolTypes.push_back("INT");
     			}
     			| ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
@@ -104,55 +147,55 @@ storing:		INTEGER {
     			}
     			;
  
-statement_loop:
-			    | statement SEMICOLON statement_loop
+statements:
+			    | statement SEMICOLON statements
     			;
 
-statement:		var ASSIGN expression {
+statement:		var ASSIGN expr {
         			statements.push_back("= " + cross.back().substr(0,cross.back().length()-1));
         			cross.pop_back();
     			}
-    			| IF bool_expr THEN statement_loop ENDIF {
+    			| IF bool_expr THEN statements ENDIF {
         			string label1 = newLabel();
         			string label2 = newLabel();
-        			statements.push_back("?:= " + label1 + ", " + operand.back());
-        			operand.pop_back();
+        			statements.push_back("?:= " + label1 + ", " + ops.back());
+        			ops.pop_back();
         			statements.push_back(": " + label2);
 
     			}
-    			| IF bool_expr THEN statement_loop ELSE statement_loop ENDIF {
+    			| IF bool_expr THEN statements ELSE statements ENDIF {
         			string label1 = newLabel();
         			string label2 = newLabel();
         			string label3 = newLabel();
-        			statements.push_back("?:= " + label1 + ", " + operand.back());
-        			operand.pop_back();
+        			statements.push_back("?:= " + label1 + ", " + ops.back());
+        			ops.pop_back();
         			statements.push_back(":= " + label2); //goto ifFalse statement
         			statements.push_back(": " + label3);
 
     			}
-    			| WHILE bool_expr BEGINLOOP statement_loop ENDLOOP {
+    			| WHILE bool_expr BEGINLOOP statements ENDLOOP {
         			string label = newLabel();
         			statements.push_back(label);
 
     			}
-    			| DO BEGINLOOP statement_loop ENDLOOP WHILE bool_expr {
+    			| DO BEGINLOOP statements ENDLOOP WHILE bool_expr {
         			string label = newLabel();
         			statements.push_back(label);
     			}
-    			| READ var var_loop {
+    			| READ var vars {
         			statements.push_back(".< " + cross.back());
         			cross.pop_back();
     			}
-    			| WRITE var var_loop {
+    			| WRITE var vars {
         			statements.push_back(".> " + cross.back());
         			cross.pop_back();
   				}
     			| CONTINUE
-    			| RETURN expression
+    			| RETURN expr
    				;
 
-var_loop:
-				| COMMA var var_loop {
+vars:
+				| COMMA var vars {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
@@ -165,13 +208,13 @@ bool_expr:		relation_and_expr
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
         			
-					string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+					string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("|| " + t + ", " + operand1 + ", " + operand2);
-					operand.push_back(t);
+        			statements.push_back("|| " + t + ", " + ops1 + ", " + ops2);
+					ops.push_back(t);
     			}
     			;
 
@@ -181,13 +224,13 @@ relation_and_expr:relation_expr1
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("&& " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("&& " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			;
 
@@ -197,20 +240,20 @@ relation_expr1:	relation_expr2
        				symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			statements.push_back("! " + t + ", " + operand.back());
-        			operand.pop_back();
-       				operand.push_back(t);
+        			statements.push_back("! " + t + ", " + ops.back());
+        			ops.pop_back();
+       				ops.push_back(t);
     			}
     			;
 
-relation_expr2:	expression comp expression
+relation_expr2:	expr comp expr
     			| TRUE {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
         			statements.push_back("= " + t + ", 1");
-        			operand.push_back(t);
+        			ops.push_back(t);
    				}
     			| FALSE {
         			string t = newTemp();
@@ -218,7 +261,7 @@ relation_expr2:	expression comp expression
         			symbolTypes.push_back("INT");
 
         			statements.push_back("= " + t + ", 0");
-        			operand.push_back(t);
+        			ops.push_back(t);
     			}
     			| L_PAREN bool_expr R_PAREN
     			;
@@ -228,110 +271,110 @@ comp:			EQ {
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("== " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("== " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			| NEQ {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("!= " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("!= " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
    				}
     			| LT {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("< " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("< " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			| GT {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("> " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("> " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			| LTE {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-       	 			statements.push_back("<= " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+       	 			statements.push_back("<= " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			| GTE {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back(">= " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back(">= " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			;
 
-expression:		multiplicative_expr expression_loop
+expr:		multiplicative_expr expr_loop
     			;
 
-expression_loop:
-			   | ADD multiplicative_expr expression_loop {
+expr_loop:
+			   | ADD multiplicative_expr expr_loop {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("+ " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("+ " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
-    			| SUB multiplicative_expr expression_loop {
+    			| SUB multiplicative_expr expr_loop {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("- " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("- " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			;
 
@@ -344,39 +387,39 @@ multiplicative_expr_loop:
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("* " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("* " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			| DIV term1 multiplicative_expr_loop {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("/ " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("/ " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			| MOD term1 multiplicative_expr_loop {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
 
-        			string operand1 = operand.back();
-        			operand.pop_back();
-        			string operand2 = operand.back();
-        			operand.pop_back();
+        			string ops1 = ops.back();
+        			ops.pop_back();
+        			string ops2 = ops.back();
+        			ops.pop_back();
 
-        			statements.push_back("% " + t + ", " + operand1 + ", " + operand2);
-        			operand.push_back(t);
+        			statements.push_back("% " + t + ", " + ops1 + ", " + ops2);
+        			ops.push_back(t);
     			}
     			;
 
@@ -393,26 +436,26 @@ term2:     		var
         			symbolTypes.push_back("INT");
 
         			statements.push_back("= " + t + ", " + to_string($1));
-        			operand.push_back(t);
+        			ops.push_back(t);
     			}
-    			| L_PAREN expression R_PAREN
+    			| L_PAREN expr R_PAREN
     			;
 
-expr_comma_loop:	expression
-    			| expression COMMA expr_comma_loop
+expr_comma_loop:	expr
+    			| expr COMMA expr_comma_loop
     			;
 
 var:			IDENT {
         		string temp = $1;
-        		operand.push_back(temp);
+        		ops.push_back(temp);
     			}
-    			| IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+    			| IDENT L_SQUARE_BRACKET expr R_SQUARE_BRACKET {
         			string t = newTemp();
         			symbols.push_back(t);
         			symbolTypes.push_back("INT");
         			statements.push_back(".< " + t);
         			statements.push_back(string("[]= ") + $1 + "," + to_string(tempCount));
-        			operand.push_back(string("[] ") + $1 + operand.back());
+        			ops.push_back(string("[] ") + $1 + ops.back());
     			}
     			;
 
