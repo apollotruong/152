@@ -19,13 +19,17 @@ extern int currLine;
 extern int currPosition;
 extern FILE * yyin;
 extern int yylex();
+string newLabel();
+string newTemp();
 
 ostringstream code;
+int labelCount;
+int tempCount;
 
 struct semval {
    string code;
    string place;     
-}
+};
 
 %}
 /* Bison Declarations */
@@ -67,30 +71,266 @@ function:      FUNCTION IDENT { code << "function " << $2 << endl; }
 
 declarations:  
                |   declarations declaration SEMICOLON
-	       ;
+	            ;
 
 declaration:   IDENT COLON INTEGER {
-	          code << ". " << *$1 << endl;   
-	       }
-	       |   IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
-	          code << ".[] " << *$1 << ", " << $5 << endl;
-	       }
+	                  code << ". " << *$1 << endl;   
+	            }
+	            |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
+	                  code << ".[] " << *$1 << ", " << $5 << endl;
+	            }
                |   IDENT COMMA declaration {
-	          code << ". " << *$1 << endl;
-	       }
+	                  code << ". " << *$1 << endl;
+	            }
                ;
 
 statements:    
-	       |   statement SEMICOLON statments
-	       ;
+	            |   statement SEMICOLON statments
+	            ;
 
 statement:     IDENT ASSIGN expression {
-	     	  code << "= " << *$1 << ", " << $3->place << "\n";
-	  	  $$ = new semVal; 	       
-	       }
+                     code << "= " << *$1 << ", " << $3->place << endl;
+                     $$ = new semval; 	       
+	            }
+               |  IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET ASSIGN expression {
+                     code << "[]= " << *$1 << ", " << $3->place << ". " << $6->place << endl;
+                     $$ = new semval;
+               }
+               |  readstatement
+               |  writestatement
+               |  RETURN expression
+               |  IF boolexp THEN statments ENDIF {
+                     ostringstream oss;
+                     string l = newlabel();
+                     string m = newLabel();
+                     oss << $2->code;
+                     oss << "?:= " << $2->place << ", " << l << endl;
+                     oss << ":= " << m << endl;
+                     oss << ": " << l << endl;
+                     oss << $4->code;
+                     oss << ": " << m << endl;
+                     $$ = new semval;
+                     $$->code = oss.str();
+               }
+               |  IF boolexp THEN statments else statements ENDIF {
+                     ostringstream oss;
+                     string l = newlabel();
+                     string m = newLabel();
+                     string n = newLabel();
+                     oss << $2->code;
+                     oss << "?:= " << $2->place << ", " << l << endl;
+                     oss << ":= " << m << endl;
+                     oss << ": " << l << endl;
+                     oss << $4->code;
+                     oss << ": " << m << endl;
+                     oss << $6->code;
+                     oss << ": " << n << endl;
+                     $$ = new semval;
+                     $$->code = oss.str();
+               }
+               |  WHILE boolexp BEGINLOOP statments ENDLOOP {
+                     ostringstream oss;
+                     string l = newlabel();
+                     string m = newLabel();
+                     string n = newLabel();
+                     oss << ": " << n << endl;
+                     oss << $2->code;
+                     oss << "?:= " << $2->place << ", " << l << endl;
+                     oss << ":= " << m << endl;
+                     oss << ": " << l << endl;
+                     oss << $4->code;
+                     oss << ":= " << n << endl;
+                     oss << ": " << m << endl;
+                     $$ = new semval;
+                     $$->code = oss.str();
+               }
+               |  DO BEGINLOOP statements ENDLOOP WHILE boolexp {
+                     ostringstream oss;
+                     string l = newlabel();
+                     string m = newLabel();
+                     oss << ": " << l << endl;
+                     oss << $3->code;
+                     oss << ": " << m << endl;
+                     oss << $6->code;
+                     oss << "?:= " << $6->place << ", " << l << endl;
+                     $$ = new semval;
+                     $$->code = oss.str();
+               }
+               | CONTINUE
+               ;
 
+readstatement: READ IDENT {
+                     code << ".< " << *$2 << endl;
+                     $$ = new semval;
+               }
+               |  READ IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+                     code << ".[]< " << *$2 << ", " << $4->place << endl;
+                     $$ = new semval;
+               }
+               |  readstatement COMMA IDENT {
+                     code << ".< " << *$3 << endl;
+                     $$ = new semval;
+               }
+               |  readstatement COMMA IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+                     code << ".[]< " << *$3 << ", " << $5->place << endl;
+                     $$ = new semval;
+               }
+               ;
 
-expression:
+writestatement:WRITE expression {
+                     code << ".> " << $2->place << endl;
+                     $$ = new semval;
+               }
+               |  writestatement COMMA expression {
+                     code << ".> " << $3->place << endl;
+                     $$ = new semval;
+               }
+               ;
+
+boolexp:       TRUE {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "= " + $$->place + ", " + "1" + "\n";
+               }
+               | FALSE {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "= " + $$->place + ", " + "0" + "\n";
+               }
+               |  L_PAREN boolexp R_PAREN {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "= " + $$->place + ", " + $2->place + "\n";
+               }
+               |  NOT boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "! " + $$->place + ", " + $2->place + "\n";
+               }
+               |  boolexp AND boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "&& " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               |  boolexp OR boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "|| " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               |  boolexp EQ boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "== " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               |  boolexp NEQ boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "!= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               |  boolexp GT boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "> " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               |  boolexp LT boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "< " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               |  boolexp GTE boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = ">= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               |  boolexp LTE boolexp {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     $$->code = "<= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+               }
+               ;
+
+expression:    IDENT {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     code << "= " << $$->place << ", " << *$1 << endl;
+               }
+               |  IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     code << "=[] " << $$->place << ", " << *$1 << endl;
+               }
+               |  expression ADD expression {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     code << ". " << $$->place << endl;
+                     code << "+ " << $$->place << ", " << $1->place << end;
+               }
+               |  expression SUB expression {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     code << ". " << $$->place << endl;
+                     code << "- " << $$->place << ", " << $1->place << end;
+               }
+               |  expression MULT expression {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     code << ". " << $$->place << endl;
+                     code << "* " << $$->place << ", " << $1->place << end;
+               }
+               |  expression DIV expression {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     code << ". " << $$->place << endl;
+                     code << "/ " << $$->place << ", " << $1->place << end;
+               }
+               |  expression MOD expression {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     code << ". " << $$->place << endl;
+                     code << "% " << $$->place << ", " << $1->place << end;
+               }
+               |  NUMBER {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     code << "= " << $$->place << ", " << $1 << endl;
+               }
+               |  L_PAREN expression R_PAREN {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     $$->code = ". " + $$->place + "\n";
+                     code << "= " << $$->place << ", " << $2->place << endl;
+               }
+               |  IDENT L_PAREN expressions R_PAREN {
+                     $$ = new semval;
+                     $$->place = newTemp();
+                     code << ". " << $$->place << endl;
+                     code << "call " << *$1 << ", " << $$->place << endl;
+               }
+               ;
+
+expressions:   
+               |  expression {
+                     code << "param " << $3->place << endl;
+               }
+               |  expressions COMMA expression {
+                     code << "param " << $3->place << endl;
+               }
+               ;
 
 %%
 /* Additional C Code */
@@ -103,10 +343,23 @@ int main(int argc, char **argv) {
       }//end if
    }//end if
    yyparse(); // Calls yylex() for tokens.
-   cout << code.str();
+   cout + code.str();
    return 0;
 }
 
 void yyerror(const char *msg) {
    printf("** Line %d, position %d: %s\n", currLine, currPosition, msg);
+}
+
+string newLabel(){
+   string n = "l" + labelCount;
+   labelCount++;
+   return n;
+}
+
+
+string newTemp(){
+   string n = "t" + tempCount;
+   labelCount++;
+   return n;
 }
