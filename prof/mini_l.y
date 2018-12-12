@@ -293,31 +293,31 @@ expression:    IDENT {
                      $$ = new semval;
                      $$->place = newTemp();
                      code << ". " << $$->place << endl;
-                     code << "+ " << $$->place << ", " << $1->place << end;
+                     code << "+ " << $$->place << ", " << $1->place << endl;
                }
                |  expression SUB expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      code << ". " << $$->place << endl;
-                     code << "- " << $$->place << ", " << $1->place << end;
+                     code << "- " << $$->place << ", " << $1->place << endl;
                }
                |  expression MULT expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      code << ". " << $$->place << endl;
-                     code << "* " << $$->place << ", " << $1->place << end;
+                     code << "* " << $$->place << ", " << $1->place << endl;
                }
                |  expression DIV expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      code << ". " << $$->place << endl;
-                     code << "/ " << $$->place << ", " << $1->place << end;
+                     code << "/ " << $$->place << ", " << $1->place << endl;
                }
                |  expression MOD expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      code << ". " << $$->place << endl;
-                     code << "% " << $$->place << ", " << $1->place << end;
+                     code << "% " << $$->place << ", " << $1->place << endl;
                }
                |  NUMBER {
                      $$ = new semval;
