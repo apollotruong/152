@@ -96,7 +96,7 @@ statements:    {
                      $$ = new semval;
                      $$->code = "";
                }
-	            |   statement SEMICOLON statments {
+	            |   statement SEMICOLON statements {
                      $$->code = $1->code + $3->code;
                }
 	            ;
@@ -111,7 +111,10 @@ statement:     IDENT ASSIGN expression {
                }
                |  readstatement
                |  writestatement
-               |  RETURN expression
+               |  RETURN expression {
+                     code << "ret " << $2->place << endl;
+                     $$ = new semval; 
+               }
                |  IF boolexp THEN statements ENDIF {
                      ostringstream oss;
                      string l = newlabel();
@@ -338,7 +341,7 @@ expression:    IDENT {
 
 expressions:   
                |  expression {
-                     code << "param " << $3->place << endl;
+                     code << "param " << $$->place << endl;
                }
                |  expressions COMMA expression {
                      code << "param " << $3->place << endl;
