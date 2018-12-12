@@ -1,0 +1,19 @@
+function fibonacci;
+beginparams
+	k : integer;
+endparams
+beginlocals
+endlocals
+beginbody
+endbody
+
+
+function main;
+beginparams
+n : integer;
+a : array[100] of integer;
+endparams
+beginlocals
+endlocals
+beginbody
+endbody
