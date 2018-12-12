@@ -54,6 +54,13 @@ struct semval {
 %token <val> NUMBER
 %token <ident> IDENT
 
+%type <semval> statement
+%type <semval> readstatement
+%type <semval> writestatement
+%type <semval> boolexp
+%type <semval> expression
+%type <semval> expressions
+
 /* Grammar Rules */
 %%
 prog_start:    functions 
@@ -112,7 +119,7 @@ statement:     IDENT ASSIGN expression {
                      $$ = new semval;
                      $$->code = oss.str();
                }
-               |  IF boolexp THEN statments else statements ENDIF {
+               |  IF boolexp THEN statments ELSE statements ENDIF {
                      ostringstream oss;
                      string l = newlabel();
                      string m = newLabel();
