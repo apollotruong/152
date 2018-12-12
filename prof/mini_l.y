@@ -106,7 +106,7 @@ statement:     IDENT ASSIGN expression {
                      $$ = new semval; 	       
 	            }
                |  IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET ASSIGN expression {
-                     code << "[]= " << *$1 << ", " << $3->place << ". " << $6->place << endl;
+                     code << "[]= " << *$1 << ", " << $3->place << ", " << $6->place << endl;
                      $$ = new semval;
                }
                |  readstatement
@@ -239,37 +239,37 @@ boolexp:       TRUE {
                      $$->code = ". " + $$->place + "\n";
                      $$->code = "|| " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
-               |  boolexp EQ boolexp {
+               |  expression EQ expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
                      $$->code = "== " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
-               |  boolexp NEQ boolexp {
+               |  expression NEQ expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
                      $$->code = "!= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
-               |  boolexp GT boolexp {
+               |  expression GT expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
                      $$->code = "> " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
-               |  boolexp LT boolexp {
+               |  expression LT expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
                      $$->code = "< " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
-               |  boolexp GTE boolexp {
+               |  expression GTE expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
                      $$->code = ">= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
-               |  boolexp LTE boolexp {
+               |  expression LTE expression {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
@@ -368,14 +368,14 @@ void yyerror(const char *msg) {
 }
 
 string newLabel(){
-   string n = "l" + labelCount.toString(labelCount);
+   string n = "l" + to_string(labelCount);
    labelCount++;
    return n;
 }
 
 
 string newTemp(){
-   string n = "t" + toString(tempCount);
+   string n = "t" + to_string(tempCount);
    labelCount++;
    return n;
 }
