@@ -368,14 +368,14 @@ void yyerror(const char *msg) {
 }
 
 string newLabel(){
-   string n = "l" + labelCount;
+   string n = "l" + labelCount.toString(labelCount);
    labelCount++;
    return n;
 }
 
 
 string newTemp(){
-   string n = "t" + tempCount;
+   string n = "t" + toString(tempCount);
    labelCount++;
    return n;
 }
