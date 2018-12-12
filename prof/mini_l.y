@@ -23,8 +23,8 @@ string newLabel();
 string newTemp();
 
 ostringstream code;
-int labelCount;
-int tempCount;
+int labelCount = 0;
+int tempCount = 0;
 
 struct semval {
    string code;
@@ -68,13 +68,13 @@ prog_start:    functions
                ;
 
 functions:      
-               |   function functions 
+               |   functions function
                ;
 
 function:      FUNCTION IDENT { code << "function " << $2 << endl; }
                SEMICOLON BEGIN_PARAMS declarations END_PARAMS 
                BEGIN_LOCALS declarations END_LOCALS 
-               BEGIN_BODY statements END_BODY 
+               BEGIN_BODY statements END_BODY { code << "endfunc" << endl; }
                ;
 
 declarations:  
@@ -84,10 +84,10 @@ declarations:
 declaration:   IDENT COLON INTEGER {
 	                  code << ". " << *$1 << endl;   
 	            }
-	            |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
+	       |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
 	                  code << ".[] " << *$1 << ", " << $5 << endl;
 	            }
-               |   IDENT COMMA declaration {
+               |  IDENT COMMA declaration {
 	                  code << ". " << *$1 << endl;
 	            }
                ;
@@ -339,8 +339,7 @@ expression:    IDENT {
                }
                ;
 
-expressions:   
-               |  expression {
+expressions:   expression {
                      code << "param " << $$->place << endl;
                }
                |  expressions COMMA expression {
@@ -376,6 +375,6 @@ string newLabel(){
 
 string newTemp(){
    string n = "t" + to_string(tempCount);
-   labelCount++;
+   tempCount++;
    return n;
 }
