@@ -19,8 +19,8 @@ extern int currLine;
 extern int currPosition;
 extern FILE * yyin;
 extern int yylex();
-extern string newLabel();
-extern string newTemp();
+string newLabel();
+string newTemp();
 
 ostringstream code;
 int labelCount;
@@ -117,7 +117,7 @@ statement:     IDENT ASSIGN expression {
                }
                |  IF boolexp THEN statements ENDIF {
                      ostringstream oss;
-                     string l = newlabel();
+                     string l = newLabel();
                      string m = newLabel();
                      oss << $2->code;
                      oss << "?:= " << $2->place << ", " << l << endl;
@@ -130,7 +130,7 @@ statement:     IDENT ASSIGN expression {
                }
                |  IF boolexp THEN statements ELSE statements ENDIF {
                      ostringstream oss;
-                     string l = newlabel();
+                     string l = newLabel();
                      string m = newLabel();
                      string n = newLabel();
                      oss << $2->code;
@@ -146,7 +146,7 @@ statement:     IDENT ASSIGN expression {
                }
                |  WHILE boolexp BEGINLOOP statements ENDLOOP {
                      ostringstream oss;
-                     string l = newlabel();
+                     string l = newLabel();
                      string m = newLabel();
                      string n = newLabel();
                      oss << ": " << n << endl;
@@ -162,7 +162,7 @@ statement:     IDENT ASSIGN expression {
                }
                |  DO BEGINLOOP statements ENDLOOP WHILE boolexp {
                      ostringstream oss;
-                     string l = newlabel();
+                     string l = newLabel();
                      string m = newLabel();
                      oss << ": " << l << endl;
                      oss << $3->code;
@@ -359,7 +359,7 @@ int main(int argc, char **argv) {
       }//end if
    }//end if
    yyparse(); // Calls yylex() for tokens.
-   cout + code.str();
+   cout << code.str();
    return 0;
 }
 
