@@ -19,8 +19,8 @@ extern int currLine;
 extern int currPosition;
 extern FILE * yyin;
 extern int yylex();
-string newLabel();
-string newTemp();
+extern string newLabel();
+extern string newTemp();
 
 ostringstream code;
 int labelCount;
@@ -54,12 +54,13 @@ struct semval {
 %token <val> NUMBER
 %token <ident> IDENT
 
-%type <semval> statement
-%type <semval> readstatement
-%type <semval> writestatement
-%type <semval> boolexp
-%type <semval> expression
-%type <semval> expressions
+%type <sem> statement
+%type <sem> statements
+%type <sem> readstatement
+%type <sem> writestatement
+%type <sem> boolexp
+%type <sem> expression
+%type <sem> expressions
 
 /* Grammar Rules */
 %%
@@ -91,8 +92,13 @@ declaration:   IDENT COLON INTEGER {
 	            }
                ;
 
-statements:    
-	            |   statement SEMICOLON statments
+statements:    {
+                     $$ = new semval;
+                     $$->code = "";
+               }
+	            |   statement SEMICOLON statments {
+                     $$->code = $1->code + $3->code;
+               }
 	            ;
 
 statement:     IDENT ASSIGN expression {
@@ -106,7 +112,7 @@ statement:     IDENT ASSIGN expression {
                |  readstatement
                |  writestatement
                |  RETURN expression
-               |  IF boolexp THEN statments ENDIF {
+               |  IF boolexp THEN statements ENDIF {
                      ostringstream oss;
                      string l = newlabel();
                      string m = newLabel();
@@ -119,7 +125,7 @@ statement:     IDENT ASSIGN expression {
                      $$ = new semval;
                      $$->code = oss.str();
                }
-               |  IF boolexp THEN statments ELSE statements ENDIF {
+               |  IF boolexp THEN statements ELSE statements ENDIF {
                      ostringstream oss;
                      string l = newlabel();
                      string m = newLabel();
@@ -135,7 +141,7 @@ statement:     IDENT ASSIGN expression {
                      $$ = new semval;
                      $$->code = oss.str();
                }
-               |  WHILE boolexp BEGINLOOP statments ENDLOOP {
+               |  WHILE boolexp BEGINLOOP statements ENDLOOP {
                      ostringstream oss;
                      string l = newlabel();
                      string m = newLabel();
