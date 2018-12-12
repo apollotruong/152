@@ -84,7 +84,7 @@ declarations:
 declaration:   IDENT COLON INTEGER {
 	                  code << ". " << *$1 << endl;   
 	            }
-	       |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
+	            |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
 	                  code << ".[] " << *$1 << ", " << $5 << endl;
 	            }
                |  IDENT COMMA declaration {
@@ -218,62 +218,62 @@ boolexp:       TRUE {
                |  L_PAREN boolexp R_PAREN {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "= " + $$->place + ", " + $2->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "= " + $$->place + ", " + $2->place + "\n";
                }
                |  NOT boolexp {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "! " + $$->place + ", " + $2->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "! " + $$->place + ", " + $2->place + "\n";
                }
                |  boolexp AND boolexp {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "&& " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "&& " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  boolexp OR boolexp {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "|| " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "|| " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression EQ expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "== " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "== " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression NEQ expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "!= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "!= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression GT expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "> " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "> " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression LT expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "< " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "< " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression GTE expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = ">= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += ">= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression LTE expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     $$->code = "<= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "<= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                ;
 
