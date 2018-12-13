@@ -43,7 +43,7 @@ struct semval {
 // Start Symbol
 %start prog_start
 // Reserved Words
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP "\n"OOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
 // Arithmetic Operators
 %left SUB ADD MULT DIV MOD
 // Comparison Operators
@@ -154,7 +154,7 @@ statement:     IDENT ASSIGN expression {
                      $$ = new semval;
                      $$->code = ss.str();
                }
-               |  WHILE boolexp BEGINLOOP statements "\n" ENDLOOP {
+               |  WHILE boolexp BEGINLOOP statements ENDLOOP {
                      stringstream ss;
                      string l = newLabel();
                      string m = newLabel();
@@ -170,7 +170,7 @@ statement:     IDENT ASSIGN expression {
                      $$ = new semval;
                      $$->code = ss.str();
                }
-               |  DO BEGINLOOP statements "\n" ENDLOOP WHILE boolexp {
+               |  DO BEGINLOOP statements ENDLOOP WHILE boolexp {
                      stringstream ss;
                      string l = newLabel();
                      string m = newLabel();
