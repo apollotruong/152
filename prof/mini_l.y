@@ -43,7 +43,7 @@ struct semval {
 // Start Symbol
 %start prog_start
 // Reserved Words
-%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP ENDLOOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
+%token FUNCTION BEGIN_PARAMS END_PARAMS BEGIN_LOCALS END_LOCALS BEGIN_BODY END_BODY INTEGER ARRAY OF IF THEN ENDIF ELSE ELSEIF WHILE DO BEGINLOOP "\n"OOP CONTINUE READ WRITE AND OR NOT TRUE FALSE RETURN
 // Arithmetic Operators
 %left SUB ADD MULT DIV MOD
 // Comparison Operators
@@ -71,10 +71,11 @@ functions:
                |   functions function
                ;
 
-function:      FUNCTION IDENT { code << "function " << $2 << endl; }
+function:      FUNCTION IDENT { code << "function " << *$2 << "\n"; }
                SEMICOLON BEGIN_PARAMS declarations END_PARAMS 
                BEGIN_LOCALS declarations END_LOCALS 
-               BEGIN_BODY statements END_BODY { code << "endfunc" << endl; }
+               BEGIN_BODY statements { code << $11->code << "\n"; }END_BODY 
+               { code << "endfunc" << "\n"; }
                ;
 
 declarations:  
@@ -82,13 +83,13 @@ declarations:
 	            ;
 
 declaration:   IDENT COLON INTEGER {
-	                  code << ". " << *$1 << endl;   
+	                  code << ". " << *$1 << "\n";   
 	            }
 	            |  IDENT COLON ARRAY L_SQUARE_BRACKET NUMBER R_SQUARE_BRACKET OF INTEGER {
-	                  code << ".[] " << *$1 << ", " << $5 << endl;
+	                  code << ".[] " << *$1 << ", " << $5 << "\n";
 	            }
                |  IDENT COMMA declaration {
-	                  code << ". " << *$1 << endl;
+	                  code << ". " << *$1 << "\n";
 	            }
                ;
 
@@ -97,109 +98,137 @@ statements:    {
                      $$->code = "";
                }
 	            |   statement SEMICOLON statements {
-                     code << $1->code << $3->code;
+                     $$->code = $1->code + $3->code;
                }
 	            ;
 
 statement:     IDENT ASSIGN expression {
-                     code << "= " << *$1 << ", " << $3->place << endl;
-                     $$ = new semval; 	       
+                     stringstream ss;
+                     ss << "= " << *$1 << ", " << $3->place << "\n";
+                     $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str()
 	            }
                |  IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET ASSIGN expression {
-                     code << "[]= " << *$1 << ", " << $3->place << ", " << $6->place << endl;
+                     stringstream ss;
+                     ss << "= " << *$1 << ", " << $3->place << ", " << $6->place << "\n";
                      $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
                }
                |  readstatement
                |  writestatement
                |  RETURN expression {
-                     code << "ret " << $2->place << endl;
-                     $$ = new semval; 
+                     stringstream ss;
+                     ss << "ret " << $2->place << "\n"
+                     $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
                }
                |  IF boolexp THEN statements ENDIF {
-                     ostringstream oss;
+                     stringstream ss;
                      string l = newLabel();
                      string m = newLabel();
-                     oss << $2->code;
-                     oss << "?:= " << $2->place << ", " << l << endl;
-                     oss << ":= " << m << endl;
-                     oss << ": " << l << endl;
-                     oss << $4->code;
-                     oss << ": " << m << endl;
+                     ss << $2->code;
+                     ss << "?:= " << $2->place << ", " << l << "\n";
+                     ss << ":= " << m << "\n";
+                     ss << ": " << l << "\n";
+                     ss << $4->code;
+                     ss << ": " << m << "\n";
                      $$ = new semval;
-                     $$->code = oss.str();
+                     $$->code = ss.str();
                }
                |  IF boolexp THEN statements ELSE statements ENDIF {
-                     ostringstream oss;
+                     stringstream ss;
                      string l = newLabel();
                      string m = newLabel();
                      string n = newLabel();
-                     oss << $2->code;
-                     oss << "?:= " << $2->place << ", " << l << endl;
-                     oss << ":= " << m << endl;
-                     oss << ": " << l << endl;
-                     oss << $4->code;
-                     oss << ": " << m << endl;
-                     oss << $6->code;
-                     oss << ": " << n << endl;
+                     ss << $2->code;
+                     ss << "?:= " << $2->place << ", " << l << "\n";
+                     ss << ":= " << m << "\n";
+                     ss << ": " << l << "\n";
+                     ss << $4->code;
+                     ss << ": " << m << "\n";
+                     ss << $6->code;
+                     ss << ": " << n << "\n";
                      $$ = new semval;
-                     $$->code = oss.str();
+                     $$->code = ss.str();
                }
-               |  WHILE boolexp BEGINLOOP statements ENDLOOP {
-                     ostringstream oss;
+               |  WHILE boolexp BEGINLOOP statements "\n" ENDLOOP {
+                     stringstream ss;
                      string l = newLabel();
                      string m = newLabel();
                      string n = newLabel();
-                     oss << ": " << n << endl;
-                     oss << $2->code;
-                     oss << "?:= " << $2->place << ", " << l << endl;
-                     oss << ":= " << m << endl;
-                     oss << ": " << l << endl;
-                     oss << $4->code;
-                     oss << ":= " << n << endl;
-                     oss << ": " << m << endl;
+                     ss << ": " << n << "\n";
+                     ss << $2->code;
+                     ss << "?:= " << $2->place << ", " << l << "\n";
+                     ss << ":= " << m << "\n";
+                     ss << ": " << l << "\n";
+                     ss << $4->code;
+                     ss << ":= " << n << "\n";
+                     ss << ": " << m << "\n";
                      $$ = new semval;
-                     $$->code = oss.str();
+                     $$->code = ss.str();
                }
-               |  DO BEGINLOOP statements ENDLOOP WHILE boolexp {
-                     ostringstream oss;
+               |  DO BEGINLOOP statements "\n" ENDLOOP WHILE boolexp {
+                     stringstream ss;
                      string l = newLabel();
                      string m = newLabel();
-                     oss << ": " << l << endl;
-                     oss << $3->code;
-                     oss << ": " << m << endl;
-                     oss << $6->code;
-                     oss << "?:= " << $6->place << ", " << l << endl;
+                     ss << ": " << l << "\n";
+                     ss << $3->code;
+                     ss << ": " << m << "\n";
+                     ss << $6->code;
+                     ss << "?:= " << $6->place << ", " << l << "\n";
                      $$ = new semval;
-                     $$->code = oss.str();
+                     $$->code = ss.str();
                }
                | CONTINUE
                ;
 
 readstatement: READ IDENT {
-                     code << ".< " << *$2 << endl;
+                     stringstream ss;
+                     ss << ".< " << *$2 << "\n";
                      $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
+                     
                }
                |  READ IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
-                     code << ".[]< " << *$2 << ", " << $4->place << endl;
+                     stringstream ss;
+                     ss << ".< " << *$2 << ", " << $4->place << "\n";
                      $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
                }
                |  readstatement COMMA IDENT {
-                     code << ".< " << *$3 << endl;
+                     stringstream ss;
+                     ss << ".< " << *$3 << "\n";
                      $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
                }
                |  readstatement COMMA IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
-                     code << ".[]< " << *$3 << ", " << $5->place << endl;
+                     stringstream ss;
+                     ss << ".[]< " << *$3 << ", " << $5->place << "\n";
                      $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
                }
                ;
 
 writestatement:WRITE expression {
-                     code << ".> " << $2->place << endl;
+                     stringstream ss;
+                     ss << ".> " << *$2 << "\n";
                      $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
                }
                |  writestatement COMMA expression {
-                     code << ".> " << $3->place << endl;
+                     stringstream ss;
+                     ss << ".> " << $3->place << "\n";
                      $$ = new semval;
+                     $$->code = ss.str();
+                     code << ss.str();
                }
                ;
 
@@ -207,72 +236,72 @@ boolexp:       TRUE {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
-                     $$->code = "= " + $$->place + ", " + "1" + "\n";
+                     $$->code += "= " + $$->place + ", " + "1" + "\n";
                }
                | FALSE {
                      $$ = new semval;
                      $$->place = newTemp();
                      $$->code = ". " + $$->place + "\n";
-                     $$->code = "= " + $$->place + ", " + "0" + "\n";
+                     $$->code += "= " + $$->place + ", " + "0" + "\n";
                }
                |  L_PAREN boolexp R_PAREN {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "= " + $$->place + ", " + $2->place + "\n";
                }
                |  NOT boolexp {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "! " + $$->place + ", " + $2->place + "\n";
                }
                |  boolexp AND boolexp {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "&& " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  boolexp OR boolexp {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "|| " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression EQ expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "== " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression NEQ expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "!= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression GT expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "> " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression LT expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "< " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression GTE expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += ">= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                |  expression LTE expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code += ". " + $$->place + "\n";
+                     $$->code = ". " + $$->place + "\n";
                      $$->code += "<= " + $$->place + ", " + $1->place + ", " + $3->place + "\n";
                }
                ;
@@ -280,70 +309,70 @@ boolexp:       TRUE {
 expression:    IDENT {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     code << "= " << $$->place << ", " << *$1 << endl;
+                     code = ". " + $$->place + "\n";
+                     code << "= " << $$->place << ", " << *$1 << "\n";
                }
                |  IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     code << "=[] " << $$->place << ", " << *$1 << endl;
+                     code = ". " + $$->place + "\n";
+                     code << "=[] " << $$->place << ", " << *$1 << "\n";
                }
                |  expression ADD expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     code << ". " << $$->place << endl;
-                     code << "+ " << $$->place << ", " << $1->place << endl;
+                     code << ". " << $$->place << "\n";
+                     code << "+ " << $$->place << ", " << $1->place << "\n";
                }
                |  expression SUB expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     code << ". " << $$->place << endl;
-                     code << "- " << $$->place << ", " << $1->place << endl;
+                     code << ". " << $$->place << "\n";
+                     code << "- " << $$->place << ", " << $1->place << "\n";
                }
                |  expression MULT expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     code << ". " << $$->place << endl;
-                     code << "* " << $$->place << ", " << $1->place << endl;
+                     code << ". " << $$->place << "\n";
+                     code << "* " << $$->place << ", " << $1->place << "\n";
                }
                |  expression DIV expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     code << ". " << $$->place << endl;
-                     code << "/ " << $$->place << ", " << $1->place << endl;
+                     code << ". " << $$->place << "\n";
+                     code << "/ " << $$->place << ", " << $1->place << "\n";
                }
                |  expression MOD expression {
                      $$ = new semval;
                      $$->place = newTemp();
-                     code << ". " << $$->place << endl;
-                     code << "% " << $$->place << ", " << $1->place << endl;
+                     code << ". " << $$->place << "\n";
+                     code << "% " << $$->place << ", " << $1->place << "\n";
                }
                |  NUMBER {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     code << "= " << $$->place << ", " << $1 << endl;
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code += "= " + $$->place + ", " + $1 + "\n";
                }
                |  L_PAREN expression R_PAREN {
                      $$ = new semval;
                      $$->place = newTemp();
-                     $$->code = ". " + $$->place + "\n";
-                     code << "= " << $$->place << ", " << $2->place << endl;
+                     $$->code += ". " + $$->place + "\n";
+                     $$->code << "= " << $$->place << ", " << $2->place << "\n";
                }
                |  IDENT L_PAREN expressions R_PAREN {
                      $$ = new semval;
                      $$->place = newTemp();
-                     code << ". " << $$->place << endl;
-                     code << "call " << *$1 << ", " << $$->place << endl;
+                     code << ". " << $$->place << "\n";
+                     code << "call " << *$1 << ", " << $$->place << "\n";
                }
                ;
 
 expressions:   expression {
-                     code << "param " << $$->place << endl;
+                     code << "param " << $$->place << "\n";
                }
                |  expressions COMMA expression {
-                     code << "param " << $3->place << endl;
+                     code << "param " << $3->place << "\n";
                }
                ;
 
