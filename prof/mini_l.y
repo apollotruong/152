@@ -74,7 +74,7 @@ functions:
 function:      FUNCTION IDENT { code << "function " << *$2 << "\n"; }
                SEMICOLON BEGIN_PARAMS declarations END_PARAMS 
                BEGIN_LOCALS declarations END_LOCALS 
-               BEGIN_BODY statements { code << $11->code << "\n"; }END_BODY 
+               BEGIN_BODY statements END_BODY 
                { code << "endfunc" << "\n"; }
                ;
 
@@ -98,7 +98,7 @@ statements:    {
                      $$->code = "";
                }
 	            |   statement SEMICOLON statements {
-                     $$->code = $1->code + $3->code;
+                     code << $1->code << $3->code;
                }
 	            ;
 
@@ -107,14 +107,14 @@ statement:     IDENT ASSIGN expression {
                      ss << "= " << *$1 << ", " << $3->place << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str()
+                     //code << ss.str();
 	            }
                |  IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET ASSIGN expression {
                      stringstream ss;
                      ss << "= " << *$1 << ", " << $3->place << ", " << $6->place << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                }
                |  readstatement
                |  writestatement
@@ -123,7 +123,7 @@ statement:     IDENT ASSIGN expression {
                      ss << "ret " << $2->place << "\n"
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                }
                |  IF boolexp THEN statements ENDIF {
                      stringstream ss;
@@ -190,7 +190,7 @@ readstatement: READ IDENT {
                      ss << ".< " << *$2 << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                      
                }
                |  READ IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
@@ -198,21 +198,21 @@ readstatement: READ IDENT {
                      ss << ".< " << *$2 << ", " << $4->place << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                }
                |  readstatement COMMA IDENT {
                      stringstream ss;
                      ss << ".< " << *$3 << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                }
                |  readstatement COMMA IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
                      stringstream ss;
                      ss << ".[]< " << *$3 << ", " << $5->place << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                }
                ;
 
@@ -221,14 +221,14 @@ writestatement:WRITE expression {
                      ss << ".> " << *$2 << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                }
                |  writestatement COMMA expression {
                      stringstream ss;
                      ss << ".> " << $3->place << "\n";
                      $$ = new semval;
                      $$->code = ss.str();
-                     code << ss.str();
+                     //code << ss.str();
                }
                ;
 
