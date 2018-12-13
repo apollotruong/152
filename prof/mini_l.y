@@ -71,7 +71,7 @@ functions:
                |   functions function
                ;
 
-function:      FUNCTION IDENT { code << "function " << $2 << endl; }
+function:      FUNCTION IDENT { code << "function " << *$2 << endl; }
                SEMICOLON BEGIN_PARAMS declarations END_PARAMS 
                BEGIN_LOCALS declarations END_LOCALS 
                BEGIN_BODY statements END_BODY { code << "endfunc" << endl; }
